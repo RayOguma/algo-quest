@@ -1,12 +1,13 @@
-// エリア画面：1つのジャンルのステージ（Lv1〜Lv5）を、エリアの風景とカード一覧で見せる
+// エリア画面：1つのジャンルの風景に Lv1〜Lv5 の地点を置く。
+// 地点を選ぶとアルゴくんが道を歩いてそこへ行き、下にステージの詳しい情報と「挑戦する」が出る。
 import * as state from "../state.js";
 import { show } from "../router.js";
-import { h, coinBadge, toast, starsText } from "../ui.js";
+import { h, coinBadge, starsText } from "../ui.js";
 import { GENRES, LEVELS, genreOf } from "../data/genres.js";
 import { stageFor } from "../data/stages/index.js";
 import { sceneLayout, drawScene } from "../engine/mapArt.js";
-import { makeSpriteCanvas } from "../engine/character.js";
 import { genreProgress } from "./stageList.js";
+import { MapChara } from "./mapChara.js";
 
 let a = null;
 
@@ -23,50 +24,36 @@ function info(g, lv) {
   else if (rec.cleared) [status, icon] = ["クリア済", "✔"];
   else [status, icon] = ["挑戦できる", "▶"];
   const label = `レベル${lv.level} ${lv.name} ${stage ? stage.title : ""} ${status} ${rec.stars ? "星" + rec.stars : ""}`;
-  return { id, stage, rec, unlocked, ready, status, icon, label };
-}
-
-function shake(el) {
-  el.classList.remove("shake");
-  void el.offsetWidth;
-  el.classList.add("shake");
-}
-
-function tryOpen(el, inf) {
-  if (!inf.ready) {
-    shake(el);
-    toast("このステージは じゅんびちゅう です");
-    return;
-  }
-  if (!inf.unlocked) {
-    shake(el);
-    toast("ひとつ まえの レベルを クリアすると ひらきます");
-    return;
-  }
-  walkTo(inf.id);
+  return { id, lv, stage, rec, unlocked, ready, status, icon, label };
 }
 
 /** アルゴくんが最初に立つ地点：指定 → 未クリアで遊べる最初 → Lv1 */
-function startStage(g, focus) {
-  if (focus && focus.startsWith(g.key + "-")) return focus;
+function startIndex(g, focus) {
+  if (focus && focus.startsWith(g.key + "-")) return Math.max(0, Number(focus.split("-")[1]) - 1);
   for (const lv of LEVELS) {
     const inf = info(g, lv);
-    if (inf.ready && inf.unlocked && !inf.rec.cleared) return inf.id;
+    if (inf.ready && inf.unlocked && !inf.rec.cleared) return lv.level - 1;
   }
-  return `${g.key}-1`;
+  return 0;
+}
+
+function fitScale(layout) {
+  const availW = Math.min((a.sceneWrap.clientWidth || 340) - 24, 1100);
+  // 下に出る詳細パネルの分をあけて、画面に収める
+  const availH = Math.max(160, window.innerHeight - 58 - 44 - (window.innerWidth < 720 ? 250 : 236));
+  const dpr = window.devicePixelRatio || 1;
+  const raw = Math.min(availW / layout.width, availH / layout.height);
+  const snapped = Math.floor(raw * dpr) / dpr;
+  return snapped >= raw * 0.9 ? snapped : raw;
 }
 
 function buildScene() {
   const wrap = a.sceneWrap;
   wrap.innerHTML = "";
   cancelAnimationFrame(a.raf);
+  if (a.chara) a.chara.destroy();
   const layout = sceneLayout(LEVELS.length);
-  const availW = Math.min((wrap.clientWidth || 340) - 32, 900);
-  const availH = Math.max(160, window.innerHeight * 0.42);
-  const dpr = window.devicePixelRatio || 1;
-  const raw = Math.min(availW / layout.width, availH / layout.height);
-  const snapped = Math.floor(raw * dpr) / dpr;
-  const scale = snapped >= raw * 0.9 ? snapped : raw;
+  const scale = fitScale(layout);
   a.fitKey = String(scale);
   const W = Math.round(layout.width * scale);
   const H = Math.round(layout.height * scale);
@@ -87,94 +74,107 @@ function buildScene() {
   };
   a.raf = requestAnimationFrame(tick);
 
-  a.nodes = {};
-  layout.nodes.forEach((p, j) => {
-    const lv = LEVELS[j];
-    const inf = info(a.g, lv);
+  a.points = layout.nodes.map((p) => ({ x: p.x * scale, y: p.y * scale }));
+  a.nodeEls = layout.nodes.map((p, j) => {
+    const inf = info(a.g, LEVELS[j]);
     const cls = `${inf.rec.cleared ? ".cleared" : ""}${!inf.ready ? ".not-ready" : !inf.unlocked ? ".locked" : ".open"}`;
     const node = h(
       `button.map-node${cls}`,
       {
         type: "button",
-        style: { left: p.x * scale + "px", top: p.y * scale + "px", "--lv": lv.color },
+        style: { left: a.points[j].x + "px", top: a.points[j].y + "px", "--lv": inf.lv.color },
         "aria-label": inf.label,
-        "aria-disabled": !inf.ready || !inf.unlocked ? "true" : "false",
-        title: inf.stage ? `Lv${lv.level} ${inf.stage.title}` : `Lv${lv.level} じゅんびちゅう`,
+        title: inf.stage ? `Lv${inf.lv.level} ${inf.stage.title}` : `Lv${inf.lv.level} じゅんびちゅう`,
       },
-      h("span.mn-lv", {}, inf.ready && !inf.unlocked ? "🔒" : String(lv.level)),
+      h("span.mn-lv", {}, inf.ready && !inf.unlocked ? "🔒" : String(inf.lv.level)),
       inf.ready ? h("span.mn-stars", { "aria-hidden": "true" }, starsText(inf.rec.stars || 0)) : null
     );
-    node.addEventListener("click", () => tryOpen(node, inf));
+    node.addEventListener("click", () => selectNode(j));
     inner.append(node);
-    a.nodes[inf.id] = { x: p.x * scale, y: p.y * scale };
+    return node;
   });
-  const ch = Math.round(Math.max(30, 24 * scale));
-  const stand = makeSpriteCanvas("stand", ch);
-  const move = makeSpriteCanvas("move", ch);
-  move.hidden = true;
-  const chara = h("div.map-chara", { "aria-hidden": "true" }, stand, move);
-  a.chara = { el: chara, stand, move };
-  inner.append(chara);
-  place(a.at, false);
+  a.chara = new MapChara(inner, Math.round(Math.max(30, 24 * scale)));
+  a.chara.setPos(a.points[a.at]);
+  if (a.selected !== null) a.nodeEls[a.selected].classList.add("selected");
 }
 
-function place(id, animate) {
-  const n = a.nodes[id];
-  if (!n) return;
-  const el = a.chara.el;
-  el.style.transition = animate ? "" : "none";
-  el.style.left = n.x + "px";
-  el.style.top = n.y + "px";
-}
-
-function walkTo(id) {
-  if (a.walking) return;
-  const from = a.nodes[a.at];
-  const to = a.nodes[id];
-  if (!from || !to || id === a.at || state.settings().reduceMotion) {
-    show("quiz", { id });
-    return;
-  }
+/** 地点を選ぶ：道に沿って歩いてから詳細を出す */
+async function selectNode(j) {
+  if (!a || a.walking) return;
+  if (a.selected === j && !a.panel.hidden) return;
+  closePanel(false);
   a.walking = true;
-  const ms = Math.min(900, 250 + Math.hypot(to.x - from.x, to.y - from.y) * 1.1);
-  const { el, stand, move } = a.chara;
-  el.style.setProperty("--walk", ms + "ms");
-  el.classList.toggle("flip", to.x < from.x);
-  stand.hidden = true;
-  move.hidden = false;
-  el.classList.add("walking");
-  a.at = id;
-  place(id, true);
-  setTimeout(() => a && show("quiz", { id }), ms + 80);
+  const step = j > a.at ? 1 : -1;
+  const pts = [];
+  for (let k = a.at + step; step > 0 ? k <= j : k >= j; k += step) pts.push(a.points[k]);
+  if (pts.length) await a.chara.walk(pts, { speed: 230, maxMs: 1500 });
+  if (!a) return;
+  a.at = j;
+  a.walking = false;
+  openPanel(j);
 }
 
-function buildCards(list) {
-  for (const lv of LEVELS) {
-    const inf = info(a.g, lv);
-    const card = h(
-      `button.stage-card${!inf.ready ? ".not-ready" : ""}${inf.ready && !inf.unlocked ? ".locked" : ""}${inf.rec.cleared ? ".cleared" : ""}`,
-      { type: "button", style: { "--lv": lv.color }, "aria-label": inf.label, "aria-disabled": !inf.ready || !inf.unlocked ? "true" : "false" },
-      h("span.lv-badge", {}, `Lv${lv.level}`),
-      h("span.lv-name", {}, `${"★".repeat(lv.level)}${"☆".repeat(5 - lv.level)} ${lv.name}`),
-      h("span.card-title", {}, inf.stage ? inf.stage.title : "じゅんびちゅう"),
-      h("span.card-stars", { "aria-hidden": "true" }, inf.ready ? starsText(inf.rec.stars || 0) : ""),
-      h("span.card-status", {}, h("span.icon", { "aria-hidden": "true" }, inf.icon), inf.status)
-    );
-    card.addEventListener("click", () => tryOpen(card, inf));
-    list.append(card);
-    if (a.focus === inf.id) setTimeout(() => card.focus({ preventScroll: true }), 0);
-  }
+function openPanel(j) {
+  const inf = info(a.g, LEVELS[j]);
+  a.selected = j;
+  a.nodeEls.forEach((n, k) => n.classList.toggle("selected", k === j));
+  const p = a.panel;
+  p.innerHTML = "";
+  p.style.setProperty("--lv", inf.lv.color);
+  let note = null;
+  if (!inf.ready) note = "このステージは じゅんびちゅう です。もうすこし まってね。";
+  else if (!inf.unlocked) note = `Lv${inf.lv.level - 1} を クリアすると ちょうせん できます。`;
+  const goBtn = h(
+    "button.btn.primary.big",
+    { type: "button", disabled: !inf.ready || !inf.unlocked, onclick: () => show("quiz", { id: inf.id }) },
+    inf.rec.cleared ? "もう一度 挑戦する ▶" : "挑戦する ▶"
+  );
+  const parts = [
+    h(
+      "div.sp-head",
+      {},
+      h("span.lv-badge", {}, `Lv${inf.lv.level}`),
+      h("span.sp-diff", {}, `むずかしさ ${"★".repeat(inf.lv.level)}${"☆".repeat(5 - inf.lv.level)}　${inf.lv.name}`),
+      h("span.sp-status", {}, h("span", { "aria-hidden": "true" }, inf.icon + " "), inf.status)
+    ),
+    h("h2.sp-title", {}, inf.stage ? inf.stage.title : "じゅんびちゅう"),
+    inf.ready
+      ? h(
+          "p.sp-meta",
+          {},
+          h("span.sp-stars", { "aria-label": `星 ${inf.rec.stars || 0}` }, starsText(inf.rec.stars || 0)),
+          inf.rec.cleared ? "　さいこう記録" : "　まだ クリアしていません"
+        )
+      : null,
+    note ? h("p.sp-note", {}, note) : null,
+    h("div.sp-actions", {}, h("button.btn", { type: "button", onclick: () => closePanel(true) }, "もどる"), goBtn),
+  ];
+  p.append(...parts.filter(Boolean));
+  p.hidden = false;
+  p.classList.remove("show");
+  void p.offsetWidth;
+  p.classList.add("show");
+  (goBtn.disabled ? p.querySelector(".sp-actions .btn") : goBtn).focus({ preventScroll: true });
+}
+
+function closePanel(focusNode) {
+  if (!a) return;
+  a.panel.hidden = true;
+  const j = a.selected;
+  a.selected = null;
+  a.nodeEls.forEach((n) => n.classList.remove("selected"));
+  if (focusNode && j !== null) a.nodeEls[j].focus({ preventScroll: true });
 }
 
 export default {
   el: "screen-area",
   mount(el, params = {}) {
     const g = genreOf(params.genre) || GENRES[0];
-    a = { g, raf: 0, walking: false, focus: params.focus };
-    a.at = startStage(g, params.focus);
+    a = { g, raf: 0, walking: false, selected: null };
+    a.at = startIndex(g, params.focus);
     state.setSetting("lastGenre", g.key);
     a.badge = coinBadge();
-    const p = genreProgress(g);
+    const prog = genreProgress(g);
     el.append(
       h(
         "header.topbar",
@@ -184,49 +184,33 @@ export default {
         h(
           "div.topbar-right",
           {},
+          h("span.area-stars", { title: "このエリアの星" }, `★${prog.stars}/15`),
           a.badge,
           h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "area", backParams: { genre: g.key } }), "aria-label": "せってい" }, "⚙")
         )
       )
     );
     a.sceneWrap = h("div.scene-wrap");
-    const list = h("div.area-cards");
-    el.append(
-      h(
-        "main.area-main",
-        {},
-        a.sceneWrap,
-        h(
-          "section.area-info",
-          {},
-          h("p.area-desc", {}, h("b", {}, g.name), `：${g.desc}`, h("span.area-stars", {}, `★ ${p.stars} / 15`)),
-          list
-        )
-      )
-    );
+    a.panel = h("section.stage-panel", { hidden: true, "aria-live": "polite", "aria-label": "ステージの じょうほう" });
+    el.append(h("main.area-main", {}, h("p.area-desc", {}, h("b", {}, g.name), `：${g.desc}`), a.sceneWrap, a.panel));
     buildScene();
-    buildCards(list);
     a.onResize = () => {
-      if (!a) return;
-      const layout = sceneLayout(LEVELS.length);
-      const availW = Math.min((a.sceneWrap.clientWidth || 340) - 32, 900);
-      const availH = Math.max(160, window.innerHeight * 0.42);
-      const dpr = window.devicePixelRatio || 1;
-      const raw = Math.min(availW / layout.width, availH / layout.height);
-      const snapped = Math.floor(raw * dpr) / dpr;
-      const scale = snapped >= raw * 0.9 ? snapped : raw;
-      if (String(scale) !== a.fitKey) buildScene();
+      if (a && String(fitScale(sceneLayout(LEVELS.length))) !== a.fitKey) buildScene();
     };
     window.addEventListener("resize", a.onResize);
+    a.nodeEls[a.at].focus({ preventScroll: true });
   },
   unmount() {
     if (!a) return;
     cancelAnimationFrame(a.raf);
+    if (a.chara) a.chara.destroy();
     window.removeEventListener("resize", a.onResize);
     if (a.badge && a.badge._off) a.badge._off();
     a = null;
   },
   onKey(e) {
-    if (e.key === "Escape" && a) show("stages", { genre: a.g.key });
+    if (!a || e.key !== "Escape") return;
+    if (!a.panel.hidden) closePanel(true);
+    else show("stages", { genre: a.g.key });
   },
 };

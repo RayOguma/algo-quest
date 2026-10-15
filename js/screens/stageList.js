@@ -5,7 +5,7 @@ import { h, coinBadge } from "../ui.js";
 import { GENRES, LEVELS } from "../data/genres.js";
 import { stageFor } from "../data/stages/index.js";
 import { worldLayout, drawWorld } from "../engine/mapArt.js";
-import { makeSpriteCanvas } from "../engine/character.js";
+import { MapChara } from "./mapChara.js";
 
 let s = null;
 
@@ -101,50 +101,39 @@ function build() {
     );
     btn.addEventListener("click", () => walkTo(g.key));
     inner.append(btn);
-    s.plazas[g.key] = { x: ar.plaza.x * scale, y: ar.plaza.y * scale, el: btn };
+    s.plazas[g.key] = { x: ar.plaza.x * scale, y: ar.plaza.y * scale, row: ar.row, col: ar.col, el: btn };
   });
 
   // アルゴくん
-  const ch = Math.round(Math.max(32, 26 * scale));
-  const stand = makeSpriteCanvas("stand", ch);
-  const move = makeSpriteCanvas("move", ch);
-  move.hidden = true;
-  const chara = h("div.map-chara", { "aria-hidden": "true" }, stand, move);
-  s.chara = { el: chara, stand, move };
-  inner.append(chara);
-  place(s.at, false);
+  s.cellW = layout.areas[0].w * scale;
+  if (s.chara) s.chara.destroy();
+  s.chara = new MapChara(inner, Math.round(Math.max(32, 26 * scale)));
+  const p0 = s.plazas[s.at];
+  if (p0) s.chara.setPos(p0);
 }
 
-function place(key, animate) {
-  const p = s.plazas[key];
-  if (!p) return;
-  const el = s.chara.el;
-  el.style.transition = animate ? "" : "none";
-  el.style.left = p.x + "px";
-  el.style.top = p.y + 6 + "px";
+/** 道（格子）に沿った経路：同じ段なら横へ、違う段なら列の境目の縦道を通る */
+function roadPath(fromKey, toKey) {
+  const A = s.plazas[fromKey];
+  const B = s.plazas[toKey];
+  if (A.row === B.row) return [B];
+  let boundary;
+  if (A.col === 0) boundary = 1;
+  else if (A.col === 2) boundary = 2;
+  else boundary = B.col === 2 ? 2 : 1;
+  const bx = boundary * s.cellW;
+  return [{ x: bx, y: A.y }, { x: bx, y: B.y }, B];
 }
 
-function walkTo(key) {
-  if (s.walking) return;
-  state.setSetting("lastGenre", key);
-  const from = s.plazas[s.at];
-  const to = s.plazas[key];
-  if (!from || !to || key === s.at || state.settings().reduceMotion) {
-    show("area", { genre: key });
-    return;
-  }
+async function walkTo(key) {
+  if (!s || s.walking) return;
   s.walking = true;
-  const dist = Math.hypot(to.x - from.x, to.y - from.y);
-  const ms = Math.min(1000, 280 + dist * 0.9);
-  const { el, stand, move } = s.chara;
-  el.style.setProperty("--walk", ms + "ms");
-  el.classList.toggle("flip", to.x < from.x);
-  stand.hidden = true;
-  move.hidden = false;
-  el.classList.add("walking");
+  state.setSetting("lastGenre", key);
+  if (key !== s.at) await s.chara.walk(roadPath(s.at, key), { speed: 260, maxMs: 1800 });
+  if (!s) return;
   s.at = key;
-  place(key, true);
-  setTimeout(() => s && show("area", { genre: key }), ms + 80);
+  await s.chara.hop();
+  if (s) show("area", { genre: key });
 }
 
 export default {
@@ -174,6 +163,7 @@ export default {
   unmount() {
     if (!s) return;
     cancelAnimationFrame(s.raf);
+    if (s.chara) s.chara.destroy();
     window.removeEventListener("resize", s.onResize);
     if (s.badge && s.badge._off) s.badge._off();
     s = null;

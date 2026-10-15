@@ -2008,3 +2008,147 @@ canvas {
     content: "🚧";
   }
 }
+
+/* ---------- エリア画面（イラスト＋詳細パネル） ---------- */
+.area-main {
+  background: #2d5a7b;
+  padding-bottom: 12px;
+}
+
+.area-main .area-desc {
+  margin: 0;
+  padding: 10px 16px 0;
+  max-width: 1100px;
+  margin-inline: auto;
+  color: #cfe3f2;
+  font-size: 0.88rem;
+}
+
+.area-main .area-desc b {
+  color: #fff;
+}
+
+.topbar .area-stars {
+  color: #c98a00;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.map-chara {
+  transition: none;
+}
+
+.map-chara.hop {
+  animation: hop 0.38s ease-out 1;
+}
+
+.map-node.selected {
+  outline: none;
+  filter: drop-shadow(0 0 6px #fff59d) drop-shadow(0 0 2px #fff);
+  animation: none;
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.stage-panel {
+  max-width: 640px;
+  margin: 6px auto 0;
+  padding: 14px 18px 16px;
+  background: #fffaf0;
+  border: 4px solid #4a3420;
+  border-top: 8px solid var(--lv);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  color: var(--ink);
+}
+
+.stage-panel[hidden] {
+  display: none;
+}
+
+.stage-panel.show {
+  animation: panelup 0.22s ease-out;
+}
+
+@keyframes panelup {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+.sp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-panel .lv-badge {
+  background: var(--lv);
+}
+
+.sp-diff {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sp-status {
+  margin-left: auto;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.sp-title {
+  margin: 6px 0 2px;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.sp-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sp-stars {
+  color: #f5a800;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.sp-note {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  background: #eef3fb;
+  font-size: 0.88rem;
+}
+
+.sp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 719px) {
+  .stage-panel {
+    margin: 6px 12px 0;
+  }
+
+  .sp-actions .btn.big {
+    flex: 1;
+  }
+}
+
+.reduce-motion .stage-panel.show,
+.reduce-motion .map-chara.hop {
+  animation: none;
+}
+
+#screen-area {
+  background: #2d5a7b;
+}
+
+.area-main {
+  min-height: 0;
+}
