@@ -1,0 +1,9 @@
+{
+  "name": "algoquest-algorithm-game",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "node tools/validate-stages.mjs",
+    "start": "python -m http.server 8000"
+  }
+}
