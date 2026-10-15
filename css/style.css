@@ -2384,3 +2384,9 @@ canvas {
     padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+@media (max-width: 480px) {
+  .modal-actions .btn {
+    flex: 1 1 auto;
+  }
+}

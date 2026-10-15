@@ -7,7 +7,7 @@ import { FieldView } from "../engine/field.js";
 import { Runner } from "../engine/runner.js";
 import { VarBar } from "../engine/varbar.js";
 import { eventsForChoice } from "../engine/world.js";
-import { getStage } from "../data/stages/index.js";
+import { getStage, stageFor } from "../data/stages/index.js";
 import { genreOf } from "../data/genres.js";
 import { codeView, viewToggle, programPanel, speedBar, stageLabel, notesBox } from "./common.js";
 
@@ -162,8 +162,16 @@ async function answer() {
         : h("p.muted", {}, "さいちょうせん：コインは もらえません（さいこう記録は のこります）"),
       h("p.muted", {}, `いまの コイン：${state.coins()}`)
     );
-    await modal({ title: "クリア！", body, actions: [{ label: "かいせつを みる", value: true, primary: true }] });
-    show("explain", { id: stage.id });
+    // 解説を飛ばしたい人のために、次の問題・一覧へも直接行けるようにする
+    const next = stageFor(stage.genre, stage.level + 1);
+    if (!next && stage.level < 5) body.append(h("p.muted", {}, "つぎの問題は じゅんびちゅう です"));
+    const actions = [{ label: "一覧へ", value: "list" }];
+    if (next) actions.push({ label: "次の問題へ ▶", value: "next" });
+    actions.push({ label: "かいせつを みる", value: "explain", primary: true });
+    const v = await modal({ title: "クリア！", body, actions });
+    if (v === "list") show("area", { genre: stage.genre, focus: stage.id });
+    else if (v === "next") show("quiz", { id: next.id });
+    else show("explain", { id: stage.id });
     return;
   }
   // 誤答
