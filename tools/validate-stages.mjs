@@ -28,7 +28,10 @@ function evalExpr(expr, world) {
     .replace(/≦/g, "<=")
     .replace(/≠/g, "!=")
     .replace(/＝/g, "==")
-    .replace(/\bmod\b/g, "%");
+    .replace(/\bmod\b/g, "%")
+    .replace(/\band\b/g, "&&")
+    .replace(/\bor\b/g, "||")
+    .replace(/\bnot\b/g, "!");
   s = s.replace(/([A-Za-z_]\w*)\[(\d+)\]/g, (m, a, i) => {
     const arr = world.arrays[a];
     return arr && arr[i - 1] !== undefined ? String(arr[i - 1]) : "NaN";

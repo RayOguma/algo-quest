@@ -169,6 +169,7 @@ async function answer() {
     if (next) actions.push({ label: "次の問題へ ▶", value: "next" });
     actions.push({ label: "かいせつを みる", value: "explain", primary: true });
     const v = await modal({ title: "クリア！", body, actions });
+    if (!q || q.stage !== stage) return; // 画面を離れていたら何もしない
     if (v === "list") show("area", { genre: stage.genre, focus: stage.id });
     else if (v === "next") show("quiz", { id: next.id });
     else show("explain", { id: stage.id });

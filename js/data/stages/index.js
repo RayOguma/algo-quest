@@ -1,8 +1,9 @@
 // 全ステージの集約。ジャンルのファイルを追加したらここに import を足す（README「ステージ追加手順」）
 import varStages from "./var.js";
 import condStages from "./cond.js";
+import loopStages from "./loop.js";
 
-export const STAGES = [...varStages, ...condStages];
+export const STAGES = [...varStages, ...condStages, ...loopStages];
 
 const byId = new Map(STAGES.map((s) => [s.id, s]));
 

@@ -8,11 +8,11 @@ import { DIRS, parseCellRef } from "./world.js";
 
 // 基本の長さ（ms）。2倍速ではすべて 1/2 になる
 const DUR = {
-  line: 260,
+  line: 220,
   move: 700, // 1マス移動（§5.3）
-  walk: 420, // 物を取りに行く・運ぶときの1マス
+  walk: 300, // 物を取りに行く・運ぶときの1マス
   spawn: 320,
-  fly: 380,
+  fly: 320,
   calc: 420,
   compare: 650,
   label: 650,
@@ -20,6 +20,9 @@ const DUR = {
   end: 200,
   finale: 750,
 };
+
+// 繰返しの2周目以降の速さ（倍）
+const LOOP_BOOST = 4;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -47,7 +50,7 @@ export class Runner {
   }
 
   get speed() {
-    return state.settings().fast ? 2 : 1;
+    return (state.settings().fast ? 2 : 1) * (this.boost || 1);
   }
 
   get vis() {
@@ -109,6 +112,9 @@ export class Runner {
     this.skipping = false;
     this.aborted = false;
     this.startedAt = performance.now();
+    // 繰返しの2周目以降（一度実行した行にもう一度来たとき）は自動で速くする（§6.2⑥）
+    this.seenLines = new Set();
+    this.boost = 1;
     this.hooks.onStart && this.hooks.onStart();
     let skippedAny = false;
     for (const ev of events) {
@@ -239,6 +245,8 @@ export class Runner {
     switch (ev.type) {
       case "line": {
         w.apply(ev);
+        this.boost = this.seenLines.has(ev.n) ? LOOP_BOOST : 1;
+        this.seenLines.add(ev.n);
         this.line(ev.n);
         await this.wait(DUR.line);
         break;

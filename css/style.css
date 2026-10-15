@@ -2390,3 +2390,11 @@ canvas {
     flex: 1 1 auto;
   }
 }
+
+/* 疑似コードの字形：記号の大きさがそろう日本語の等幅フォント（OS内蔵のもののみ） */
+.program.is-code .ptext,
+.choices.is-code .choice-text,
+.answer-text.is-code,
+.trace-code.is-code {
+  font-family: "BIZ UDGothic", "BIZ UDゴシック", "Osaka-mono", "MS Gothic", "Noto Sans Mono CJK JP", "Hiragino Sans", monospace;
+}
