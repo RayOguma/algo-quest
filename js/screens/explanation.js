@@ -28,6 +28,7 @@ async function replay() {
   x.playing = true;
   x.root.classList.add("playing");
   x.replayBtn.disabled = true;
+  x.replayBtn.parentElement.hidden = true;
   x.speed.show(true);
   if (window.matchMedia("(max-width: 899px)").matches) x.left.scrollIntoView({ block: "start" });
   // 解説では選択に関係なく「正しい処理」を再生
@@ -37,6 +38,7 @@ async function replay() {
   x.playing = false;
   x.root.classList.remove("playing");
   x.replayBtn.disabled = false;
+  x.replayBtn.parentElement.hidden = false;
 }
 
 function renderTexts() {
@@ -76,7 +78,9 @@ export default {
     const vbEl = h("div.varbar");
     const vb = new VarBar(vbEl);
     x.replayBtn = h("button.btn.primary.replay-btn", { type: "button", onclick: () => replay() }, "▶ もう一度 実演を見る");
-    x.left = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, host, x.speed.el), vbEl, h("div.replay-row", {}, x.replayBtn));
+    // 実演が終わったあとの盤面は動かないので、ボタンはフィールドの真ん中に重ねる
+    const stageBox = h("div.field-stage", {}, host, h("div.replay-overlay", {}, x.replayBtn));
+    x.left = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, stageBox, x.speed.el), vbEl);
 
     // 右
     x.program = programPanel(stage, { onLineClick: (n) => x.program.highlight(n) });
