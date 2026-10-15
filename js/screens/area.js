@@ -37,14 +37,17 @@ function startIndex(g, focus) {
   return 0;
 }
 
-function fitScale(layout) {
-  const availW = Math.min((a.sceneWrap.clientWidth || 340) - 24, 1100);
-  // 下に出る詳細パネルの分をあけて、画面に収める
-  const availH = Math.max(160, window.innerHeight - 58 - 44 - (window.innerWidth < 720 ? 250 : 236));
+/** 画面いっぱいに収まる向きと倍率を決める */
+function fit() {
+  const availW = Math.min((a.sceneWrap.clientWidth || 340) - 16, 1600);
+  const availH = Math.max(200, window.innerHeight - 58 - 20);
+  const portrait = availW < 640 && availH > availW * 1.15;
+  const layout = sceneLayout(LEVELS.length, portrait);
   const dpr = window.devicePixelRatio || 1;
   const raw = Math.min(availW / layout.width, availH / layout.height);
   const snapped = Math.floor(raw * dpr) / dpr;
-  return snapped >= raw * 0.9 ? snapped : raw;
+  const scale = snapped >= raw * 0.92 ? snapped : raw;
+  return { layout, scale, key: `${portrait}|${scale}` };
 }
 
 function buildScene() {
@@ -52,16 +55,21 @@ function buildScene() {
   wrap.innerHTML = "";
   cancelAnimationFrame(a.raf);
   if (a.chara) a.chara.destroy();
-  const layout = sceneLayout(LEVELS.length);
-  const scale = fitScale(layout);
-  a.fitKey = String(scale);
+  const { layout, scale, key } = fit();
+  a.fitKey = key;
   const W = Math.round(layout.width * scale);
   const H = Math.round(layout.height * scale);
   const canvas = h("canvas.map-canvas", { width: layout.width, height: layout.height, "aria-hidden": "true" });
   canvas.style.width = W + "px";
   canvas.style.height = H + "px";
-  const inner = h("div.map-inner", { style: { width: W + "px", height: H + "px" } }, canvas);
+  const inner = h("div.map-inner.scene-inner", { style: { width: W + "px", height: H + "px" } }, canvas);
   wrap.append(inner);
+  a.inner = inner;
+  a.W = W;
+  a.H = H;
+  // ジャンルの説明は絵の中の左上に看板として出す
+  inner.append(h("div.scene-sign", {}, h("b", {}, `${a.g.num} ${a.g.name}`), h("span", {}, a.g.desc)));
+  inner.append(a.panel);
   const gi = GENRES.indexOf(a.g);
   drawScene(canvas, a.g.key, layout, gi, 0);
   let last = 0;
@@ -95,7 +103,10 @@ function buildScene() {
   });
   a.chara = new MapChara(inner, Math.round(Math.max(30, 24 * scale)));
   a.chara.setPos(a.points[a.at]);
-  if (a.selected !== null) a.nodeEls[a.selected].classList.add("selected");
+  if (a.selected !== null) {
+    a.nodeEls[a.selected].classList.add("selected");
+    positionPanel(a.selected);
+  }
 }
 
 /** 地点を選ぶ：道に沿って歩いてから詳細を出す */
@@ -134,7 +145,7 @@ function openPanel(j) {
       "div.sp-head",
       {},
       h("span.lv-badge", {}, `Lv${inf.lv.level}`),
-      h("span.sp-diff", {}, `むずかしさ ${"★".repeat(inf.lv.level)}${"☆".repeat(5 - inf.lv.level)}　${inf.lv.name}`),
+      h("span.sp-diff", { title: "むずかしさ" }, `${"★".repeat(inf.lv.level)}${"☆".repeat(5 - inf.lv.level)} ${inf.lv.name}`),
       h("span.sp-status", {}, h("span", { "aria-hidden": "true" }, inf.icon + " "), inf.status)
     ),
     h("h2.sp-title", {}, inf.stage ? inf.stage.title : "じゅんびちゅう"),
@@ -151,10 +162,28 @@ function openPanel(j) {
   ];
   p.append(...parts.filter(Boolean));
   p.hidden = false;
+  positionPanel(j);
   p.classList.remove("show");
   void p.offsetWidth;
   p.classList.add("show");
   (goBtn.disabled ? p.querySelector(".sp-actions .btn") : goBtn).focus({ preventScroll: true });
+}
+
+/** 選んだ地点の上（入らなければ下）に、吹き出しのようにパネルを出す */
+function positionPanel(j) {
+  const p = a.panel;
+  const pt = a.points[j];
+  const pw = p.offsetWidth;
+  const ph = p.offsetHeight;
+  const gap = 34;
+  let above = pt.y - gap - ph >= 6;
+  if (!above && pt.y + gap + ph > a.H - 6) above = pt.y > a.H / 2;
+  const top = above ? Math.max(6, pt.y - gap - ph) : Math.min(a.H - ph - 6, pt.y + gap);
+  const left = Math.max(6, Math.min(a.W - pw - 6, pt.x - pw / 2));
+  p.style.left = left + "px";
+  p.style.top = top + "px";
+  p.classList.toggle("below", !above);
+  p.style.setProperty("--tail", Math.max(18, Math.min(pw - 18, pt.x - left)) + "px");
 }
 
 function closePanel(focusNode) {
@@ -192,10 +221,10 @@ export default {
     );
     a.sceneWrap = h("div.scene-wrap");
     a.panel = h("section.stage-panel", { hidden: true, "aria-live": "polite", "aria-label": "ステージの じょうほう" });
-    el.append(h("main.area-main", {}, h("p.area-desc", {}, h("b", {}, g.name), `：${g.desc}`), a.sceneWrap, a.panel));
+    el.append(h("main.area-main", {}, a.sceneWrap));
     buildScene();
     a.onResize = () => {
-      if (a && String(fitScale(sceneLayout(LEVELS.length))) !== a.fitKey) buildScene();
+      if (a && fit().key !== a.fitKey) buildScene();
     };
     window.addEventListener("resize", a.onResize);
     a.nodeEls[a.at].focus({ preventScroll: true });

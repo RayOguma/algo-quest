@@ -2152,3 +2152,140 @@ canvas {
 .area-main {
   min-height: 0;
 }
+
+/* ---------- エリア画面：画面いっぱいのマップ＋マップ内の看板・吹き出しパネル ---------- */
+.scene-wrap {
+  padding: 8px;
+}
+
+.scene-inner {
+  overflow: visible;
+}
+
+.scene-inner > .map-canvas {
+  border-radius: 0;
+}
+
+.scene-sign {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  top: 8px;
+  max-width: min(60%, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 10px;
+  background: #fff6dc;
+  color: #4a3420;
+  border: 3px solid #4a3420;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.scene-sign b {
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.stage-panel {
+  position: absolute;
+  z-index: 6;
+  margin: 0;
+  width: min(360px, calc(100% - 12px));
+  max-width: none;
+  padding: 10px 14px 12px;
+  border-width: 3px;
+  border-top-width: 7px;
+}
+
+/* 吹き出しのしっぽ（地点のほうを指す） */
+.stage-panel::after {
+  content: "";
+  position: absolute;
+  left: var(--tail, 50%);
+  bottom: -14px;
+  transform: translateX(-50%);
+  border: 11px solid transparent;
+  border-top: 12px solid #4a3420;
+  border-bottom: 0;
+}
+
+.stage-panel.below::after {
+  bottom: auto;
+  top: -19px;
+  border-top: 0;
+  border-bottom: 12px solid var(--lv);
+}
+
+.stage-panel .sp-title {
+  font-size: 1.15rem;
+  margin: 4px 0 0;
+}
+
+.stage-panel .sp-actions {
+  margin-top: 8px;
+}
+
+.stage-panel .sp-actions .btn.big {
+  font-size: 1rem;
+  padding: 10px 18px;
+  min-height: 46px;
+}
+
+@media (max-width: 719px) {
+  .stage-panel {
+    margin: 0;
+  }
+
+  .scene-sign {
+    max-width: 62%;
+    font-size: 0.68rem;
+    padding: 3px 7px;
+    border-width: 2px;
+  }
+
+  .scene-sign b {
+    font-size: 0.8rem;
+  }
+}
+
+/* 枠線ぶんでキャンバスがはみ出さないように（枠は外側に足す） */
+.map-inner {
+  box-sizing: content-box;
+}
+
+@media (max-width: 719px) {
+  .stage-panel {
+    width: min(300px, calc(100% - 12px));
+    padding: 8px 10px 10px;
+  }
+
+  .stage-panel .sp-head {
+    gap: 6px;
+  }
+
+  .stage-panel .sp-diff {
+    font-size: 0.75rem;
+  }
+
+  .stage-panel .sp-status {
+    font-size: 0.78rem;
+  }
+
+  .stage-panel .sp-title {
+    font-size: 1rem;
+  }
+
+  .stage-panel .sp-meta,
+  .stage-panel .sp-note {
+    font-size: 0.75rem;
+  }
+
+  .stage-panel .sp-actions .btn {
+    min-height: 42px;
+    padding: 8px 12px;
+  }
+}

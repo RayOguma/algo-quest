@@ -401,19 +401,36 @@ export function drawWorld(canvas, layout, keys, t = 0) {
 export const SCENE_W = 200;
 export const SCENE_H = 112;
 
-/** 左から右へ続く1本道に、Lv1〜Lv5 の地点を置く */
-export function sceneLayout(levels = 5) {
-  const a = { x: 0, y: SCENE_H * 0.6 };
-  const b = { x: SCENE_W, y: SCENE_H * 0.6 };
+/**
+ * Lv1〜Lv5 の地点を置く1本道。
+ * 横長（PC）：左から右へ蛇行。縦長（スマホ縦）：上から下へ蛇行。
+ */
+export function sceneLayout(levels = 5, portrait = false) {
+  const width = portrait ? 120 : SCENE_W;
+  const height = portrait ? 210 : SCENE_H;
   const wob = [1, -1, 1, -1, 1, -1];
-  const nodes = Array.from({ length: levels }, (_, j) => {
-    const t = 0.12 + (0.76 * j) / Math.max(1, levels - 1);
-    return { x: a.x + (b.x - a.x) * t, y: a.y + 15 * wob[j % wob.length] };
-  });
+  let a;
+  let b;
+  let nodes;
+  if (portrait) {
+    a = { x: width * 0.5, y: 0 };
+    b = { x: width * 0.5, y: height };
+    nodes = Array.from({ length: levels }, (_, j) => {
+      const t = 0.14 + (0.74 * j) / Math.max(1, levels - 1);
+      return { x: width * 0.5 + 30 * wob[j % wob.length], y: height * t };
+    });
+  } else {
+    a = { x: 0, y: height * 0.6 };
+    b = { x: width, y: height * 0.6 };
+    nodes = Array.from({ length: levels }, (_, j) => {
+      const t = 0.12 + (0.76 * j) / Math.max(1, levels - 1);
+      return { x: width * t, y: a.y + 15 * wob[j % wob.length] };
+    });
+  }
   const pts = [a, ...nodes, b];
   const segs = [];
   for (let k = 0; k < pts.length - 1; k++) segs.push([pts[k], pts[k + 1]]);
-  return { nodes, segs, width: SCENE_W, height: SCENE_H };
+  return { nodes, segs, width, height, portrait };
 }
 
 export function drawScene(canvas, key, layout, seedIndex, t = 0) {
