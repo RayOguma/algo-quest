@@ -2345,3 +2345,42 @@ canvas {
   box-shadow: 0 3px 0 #2a5fcc, 0 8px 24px rgba(0, 0, 0, 0.25);
   opacity: 0.95;
 }
+
+/* ---------- 下端の余白：最後のボタンがタスクバーやブラウザのバーと重ならないように ---------- */
+:root {
+  --bottom-safe: calc(120px + env(safe-area-inset-bottom, 0px));
+}
+
+.right-panel.explain,
+.settings,
+.genre-list {
+  padding-bottom: var(--bottom-safe);
+}
+
+@media (min-width: 900px) {
+  .right-panel {
+    padding-bottom: var(--bottom-safe);
+  }
+}
+
+@media (max-width: 899px) {
+  /* スマホ：画面下に固定した「こたえる」バーの分も足す */
+  .right-panel {
+    padding-bottom: calc(var(--bottom-safe) + 80px);
+  }
+
+  .right-panel.explain {
+    padding-bottom: var(--bottom-safe);
+  }
+}
+
+.ex-actions {
+  margin-top: 24px;
+}
+
+@media (max-width: 899px) {
+  /* 固定の「こたえる」バーも画面の一番下にぴったり付けず、少し浮かせる */
+  .answer-bar {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+}
