@@ -13,12 +13,15 @@ const warnings = [];
 const err = (id, msg) => errors.push(`[${id}] ${msg}`);
 const warn = (id, msg) => warnings.push(`[${id}] ${msg}`);
 
-const MINUS = /[−–ー]/g;
+const MINUS = /[−–ー－]/g;
 
 /** 式の値を計算（変数・配列参照を現在値に置換して評価）。評価できなければ undefined */
 function evalExpr(expr, world) {
   let s = String(expr)
     .replace(MINUS, "-")
+    .replace(/＋/g, "+")
+    .replace(/＜/g, "<")
+    .replace(/＞/g, ">")
     .replace(/×/g, "*")
     .replace(/÷/g, "/")
     .replace(/≧/g, ">=")
@@ -79,7 +82,7 @@ function parseChoiceCode(code, stage) {
     if (rel || m[1] === "0") return { pos: { x: stage.field.start.x + a, y: stage.field.start.y + b } };
     return { pos: { x: a, y: b } };
   }
-  m = /^([A-Za-z_]\w*)\s*=\s*\[([^\]]*)\]$/.exec(s);
+  m = /^([A-Za-z_]\w*)\s*=\s*[\[{]([^\]}]*)[\]}]$/.exec(s);
   if (m) return { arrays: { [m[1]]: m[2].split(",").map((v) => Number(v.trim())) } };
   const parts = s.split(",").map((p) => p.trim());
   const vars = {};

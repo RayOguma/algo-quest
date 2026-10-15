@@ -9,7 +9,7 @@ import { VarBar } from "../engine/varbar.js";
 import { eventsForChoice } from "../engine/world.js";
 import { getStage } from "../data/stages/index.js";
 import { genreOf } from "../data/genres.js";
-import { codeView, viewToggle, programPanel, speedBar, stageLabel } from "./common.js";
+import { codeView, viewToggle, programPanel, speedBar, stageLabel, notesBox } from "./common.js";
 
 const LABELS = ["A", "B", "C", "D"];
 const HINT_NAMES = ["① 方向性", "② 考え方", "③ 解答補助"];
@@ -184,7 +184,7 @@ export default {
     const header = h(
       "header.topbar",
       {},
-      h("button.btn.small", { type: "button", onclick: () => show("stages", { focus: stage.id }), "aria-label": "ステージ いちらんへ もどる" }, "← いちらん"),
+      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }), "aria-label": "ステージ いちらんへ もどる" }, "← もどる"),
       h("h1.topbar-title", {}, stageLabel(stage, genre)),
       h("div.topbar-right", {}, badge, q.hintBtn)
     );
@@ -214,6 +214,7 @@ export default {
       stage.intro && !state.stageRec(stage.id).cleared ? h("p.intro", {}, stage.intro) : null,
       h("h3.sec-title", {}, "処理"),
       q.program.el,
+      notesBox(stage),
       h("h3.sec-title", {}, "問題"),
       h("p.question", {}, stage.question),
       q.choicesEl,
@@ -254,6 +255,6 @@ export default {
     else if (k === "f" || k === "F") q.speed.toggleFast();
     else if (k === "s" || k === "S") {
       if (q.playing) q.speed.skip();
-    } else if (k === "Escape" && !q.playing) show("stages", { focus: q.stage.id });
+    } else if (k === "Escape" && !q.playing) show("area", { genre: q.stage.genre, focus: q.stage.id });
   },
 };

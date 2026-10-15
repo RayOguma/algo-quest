@@ -45,7 +45,16 @@ export function programPanel(stage, { onLineClick } = {}) {
   let current = 0;
   const setView = (view) => {
     ol.classList.toggle("is-code", view === "code");
-    items.forEach((li, i) => (li.querySelector(".ptext").textContent = stage.program[view][i]));
+    items.forEach((li, i) => {
+      // 先頭の空白（半角2つ＝1段）を見やすい字下げに変える
+      const raw = stage.program[view][i];
+      const m = /^[ 　]*/.exec(raw)[0];
+      const depth = Math.round(m.replace(/　/g, "  ").length / 2);
+      const t = li.querySelector(".ptext");
+      t.textContent = raw.slice(m.length);
+      t.style.setProperty("--depth", String(depth));
+      t.classList.toggle("indented", depth > 0);
+    });
   };
   const highlight = (n) => {
     current = n;
@@ -112,4 +121,10 @@ export function coloredState(stage, text) {
 
 export function stageLabel(stage, genre) {
   return `${genre ? genre.num : ""} Lv${stage.level}「${stage.title}」`;
+}
+
+/** 問題文で説明される手続・前提（例：配列の要素番号は 1 から始まる） */
+export function notesBox(stage) {
+  if (!stage.notes || !stage.notes.length) return null;
+  return h("div.notes", {}, h("b", {}, "〔説明〕"), ...stage.notes.map((t) => h("p", {}, t)));
 }

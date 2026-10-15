@@ -1,5 +1,5 @@
 // ② cond（わかれみち）
-import { line, moves, takeCopy, put, spawnOnPad, compare, emote, end, mismatch } from "./helpers.js";
+import { line, moves, spawn, pickup, store, takeCopy, put, spawnOnPad, compare, emote, end, mismatch } from "./helpers.js";
 
 const C1_FIELD = {
   cols: 7,
@@ -16,7 +16,10 @@ const C1_FIELD = {
   queues: [],
 };
 
-const checkX = [line(1), takeCopy("x", "cx"), put("cx", "compare"), spawnOnPad("n5", 5, "compare"), compare("7 ≧ 5", true)];
+// 1行目：x を用意して 7 を入れる（クリスタルはアルゴくんの足もとに出る）
+const declX = [line(1), spawn("n7", 7, 1, 2), pickup("n7"), store("n7", "x")];
+// 2行目：x のコピーと 5 を比較台に並べて判定
+const checkX = [line(2), takeCopy("x", "cx"), put("cx", "compare"), spawnOnPad("n5", 5, "compare"), compare("7 ≧ 5", true)];
 
 const cond1 = {
   id: "cond-1",
@@ -24,52 +27,62 @@ const cond1 = {
   level: 1,
   title: "わかれみち",
   concepts: ["if"],
-  intro: "「もし ～ なら」は、じょうけんが なりたつ ときだけ すすむ みちを えらぶよ。\nなりたたない ときは「そうでなければ」の みちへ。",
+  intro: "「if（もし）」は、じょうけんが なりたつ ときだけ その中の しょりを するよ。\nなりたたない ときは「else（そうでなければ）」の中へ。",
   field: C1_FIELD,
-  vars: { x: 7 },
+  vars: {},
   varColors: { x: "#4FC3F7" },
   program: {
-    ja: ["もし x が 5 以上なら", "　上へ 1マス 進む", "そうでなければ", "　下へ 1マス 進む", "右へ 2マス 進む"],
-    code: ["もし x ≧ 5 ならば", "　上(1)", "そうでなければ", "　下(1)", "右(2)"],
+    ja: [
+      "整数の 変数 x を 用意して 7 を入れる",
+      "もし x が 5 以上なら",
+      "  上へ 1マス 進む",
+      "そうでなければ",
+      "  下へ 1マス 進む",
+      "（もし ここまで）",
+      "右へ 2マス 進む",
+    ],
+    code: ["整数型: x ← 7", "if (x が 5 以上)", "  moveUp(1)", "else", "  moveDown(1)", "endif", "moveRight(2)"],
   },
-  question: "この処理を実行したあと、アルゴくんはどこにいますか？（x の値は 7）",
+  notes: ["手続 moveUp(n)，moveDown(n)，moveRight(n) は，アルゴくんをそれぞれ上・下・右へ n マス進める。"],
+  question: "この処理を実行したあと、アルゴくんはどこにいますか？",
   answerType: "pos-rel",
   choices: [
     { ja: "スタートから 右に2マス、上に1マス", code: "(x, y) = (+2, −1)", correct: true },
     {
       ja: "スタートから 下に1マス、右に2マス",
       code: "(x, y) = (+2, +1)",
-      wrongFeedback: "x は 7 なので、条件 x ≧ 5 は成り立ちます。成り立つときは「上へ」の側です。",
-      events: [line(1), emote("think"), line(3), line(4), ...moves("down"), line(5), ...moves("right", 2), mismatch()],
+      wrongFeedback: "x は 7 なので、条件「x が 5 以上」は成り立ちます。成り立つときは if のすぐ下（3行目）が実行されます。",
+      events: [...declX, line(2), emote("think"), line(4), line(5), ...moves("down"), line(6), line(7), ...moves("right", 2), mismatch()],
     },
     {
       ja: "スタートから 右に2マスだけ",
       code: "(x, y) = (+2, 0)",
-      wrongFeedback: "条件が成り立つと、2行目の「上へ1マス」が実行されます。どちらの道も進まない、ということはありません。",
-      events: [line(1), emote("think"), line(5), ...moves("right", 2), mismatch()],
+      wrongFeedback: "条件が成り立つと、3行目の「上へ1マス」が実行されます。if と else のどちらの中も実行されない、ということはありません。",
+      events: [...declX, line(2), emote("think"), line(6), line(7), ...moves("right", 2), mismatch()],
     },
     {
       ja: "スタートから 上に1マスだけ",
       code: "(x, y) = (0, −1)",
-      wrongFeedback: "5行目の「右へ2マス」は分岐の外なので、条件に関係なく実行されます。",
-      events: [...checkX, line(2), ...moves("up"), mismatch("あれ？ まだ とちゅう みたい…")],
+      wrongFeedback: "7行目の「右へ2マス」は endif のあとなので、条件に関係なく実行されます。",
+      events: [...declX, ...checkX, line(3), ...moves("up"), mismatch("あれ？ まだ とちゅう みたい…")],
     },
   ],
-  events: [...checkX, line(2), ...moves("up"), line(5), ...moves("right", 2), end()],
+  events: [...declX, ...checkX, line(3), ...moves("up"), line(6), line(7), ...moves("right", 2), end()],
   expectedFinal: { pos: { x: 3, y: 1 }, vars: { x: 7 } },
   hints: [
     "まず「x が 5 以上」かどうかを たしかめよう。x は いくつ？",
-    "条件が成り立つときは2行目、成り立たないときは4行目だけが実行されます。5行目はどちらの場合も実行されます。",
-    "7 ≧ 5 は成り立つので「上へ1マス」。そのあと「右へ2マス」進みます。",
+    "条件が成り立つときは if と else の間（3行目）、成り立たないときは else と endif の間（5行目）だけが実行されます。endif のあとはどちらの場合も実行されます。",
+    "7 は 5 以上なので「上へ1マス」。そのあと endif の下の「右へ2マス」も進みます。",
   ],
   explanation: {
-    why: "x は 7 なので「x ≧ 5」は真です。2行目の「上へ1マス」が実行され、4行目は実行されません。そのあと5行目の「右へ2マス」は分岐の外なので必ず実行されます。",
+    why: "x は 7 なので「x が 5 以上」は真です。if の中の3行目「上へ1マス」が実行され、else の中の5行目は実行されません。7行目の「右へ2マス」は endif のあとなので必ず実行されます。",
     trace: [
-      { line: 1, state: "x=7、7 ≧ 5 は 真　位置：(1,2)" },
-      { line: 2, state: "位置：(1,1)" },
-      { line: 5, state: "位置：(3,1)" },
+      { line: 1, state: "x=7　位置：(1,2)" },
+      { line: 2, state: "x が 5 以上 → 真" },
+      { line: 3, state: "位置：(1,1)" },
+      { line: 7, state: "位置：(3,1)" },
     ],
-    points: ["条件が真のときだけ if 側が実行される", "分岐のあとの処理は両方の場合に実行される"],
+    points: ["条件が真のときだけ if の中が実行される（偽なら else の中）", "endif のあとの処理は、どちらの場合も実行される"],
   },
 };
 

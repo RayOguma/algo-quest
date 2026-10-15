@@ -1,9 +1,5 @@
-// ワールドマップのドット絵（すべてコード描画）。
-// 低解像度キャンバス（1論理px = 1ドット）に描き、CSS の image-rendering: pixelated で整数倍に拡大する。
-
-export const AREA_W = 160;
-export const AREA_H = 128;
-const ROAD_W = 9;
+// ワールドマップ／エリアのドット絵（すべてコード描画）。
+// 低解像度キャンバス（1論理px = 1ドット）に描き、CSS の image-rendering: pixelated で拡大する。
 
 // ---- 小さな道具 ----
 function mulberry(seed) {
@@ -29,86 +25,6 @@ function distToSeg(px, py, a, b) {
   const l2 = dx * dx + dy * dy || 1;
   const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / l2));
   return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
-}
-
-// ---- レイアウト ----
-/**
- * エリアの並びと、道・ステージ地点の座標を計算する。
- * cols=3 のときは左右に蛇行、cols=1 のときは縦一列。
- */
-export function computeLayout(count, cols) {
-  const rows = Math.ceil(count / cols);
-  const cells = [];
-  for (let i = 0; i < count; i++) {
-    const row = Math.floor(i / cols);
-    const k = i % cols;
-    const col = cols === 1 ? 0 : row % 2 === 0 ? k : cols - 1 - k;
-    cells.push({ col, row, ox: col * AREA_W, oy: row * AREA_H });
-  }
-  const sidePoint = (c, side) => {
-    if (side === "left") return { x: c.ox, y: c.oy + AREA_H * 0.56 };
-    if (side === "right") return { x: c.ox + AREA_W, y: c.oy + AREA_H * 0.56 };
-    if (side === "top") return { x: c.ox + AREA_W * 0.5, y: c.oy };
-    return { x: c.ox + AREA_W * 0.5, y: c.oy + AREA_H };
-  };
-  const sideToward = (a, b) => (b.col > a.col ? "right" : b.col < a.col ? "left" : b.row > a.row ? "bottom" : "top");
-  const areas = cells.map((c, i) => {
-    const prev = cells[i - 1];
-    const next = cells[i + 1];
-    const inSide = prev ? sideToward(c, prev) : cols === 1 ? "top" : "left";
-    const outSide = next ? sideToward(c, next) : cols === 1 ? "bottom" : row0Out(c, cols);
-    const a = sidePoint(c, inSide);
-    const b = sidePoint(c, outSide);
-    const horiz = (sd) => sd === "left" || sd === "right";
-    const ts = [0.14, 0.32, 0.5, 0.68, 0.86];
-    const wob = [1, -1, 1, -1, 1];
-    let nodes;
-    if (!horiz(inSide) && !horiz(outSide)) {
-      // 縦一列：エリアごとに左右どちらかへ寄せて蛇行し、反対側を景色に使う
-      const side = i % 2 ? 1 : -1;
-      const vts = [0.3, 0.45, 0.6, 0.75, 0.9];
-      nodes = vts.map((t, j) => ({ x: c.ox + AREA_W * (0.5 + side * 0.2) + wob[j] * AREA_W * 0.09, y: c.oy + AREA_H * t }));
-    } else {
-      // 横一直線、または角を曲がる（L字）道に沿って置く
-      const pts = [a];
-      if (horiz(inSide) !== horiz(outSide)) {
-        const hp = horiz(inSide) ? a : b;
-        const vp = horiz(inSide) ? b : a;
-        pts.push({ x: vp.x, y: hp.y });
-      }
-      pts.push(b);
-      const lens = [];
-      let total = 0;
-      for (let k = 0; k < pts.length - 1; k++) {
-        const l = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
-        lens.push(l);
-        total += l;
-      }
-      const amp = pts.length > 2 ? 10 : 16;
-      nodes = ts.map((t, j) => {
-        let d = t * total;
-        let k = 0;
-        while (k < lens.length - 1 && d > lens[k]) d -= lens[k++];
-        const p0 = pts[k];
-        const p1 = pts[k + 1];
-        const f = d / (lens[k] || 1);
-        const ux = (p1.x - p0.x) / (lens[k] || 1);
-        const uy = (p1.y - p0.y) / (lens[k] || 1);
-        return { x: p0.x + (p1.x - p0.x) * f - uy * amp * wob[j], y: p0.y + (p1.y - p0.y) * f + ux * amp * wob[j] };
-      });
-    }
-    // 看板（左上）と重ならないようにする
-    for (const n of nodes) if (n.x < c.ox + 118 && n.y < c.oy + 30) n.y = c.oy + 34;
-    return { ...c, entry: a, exit: b, nodes };
-  });
-  const path = [];
-  areas.forEach((ar) => path.push(ar.entry, ...ar.nodes, ar.exit));
-  return { areas, path, width: cols * AREA_W, height: rows * AREA_H };
-}
-
-function row0Out(c, cols) {
-  // 最後のエリア：蛇行の向きに合わせて抜ける
-  return c.row % 2 === 0 ? "right" : "left";
 }
 
 // ---- 地形のテーマ ----
@@ -322,7 +238,7 @@ function castle(x, y, t) {
 const SPAN = { var: [-10, 32], cond: [-7, 14], loop: [-12, 34], arr: [-4, 41], search: [-19, 20], sort: [-2, 25], stack: [-6, 34], rec: [-21, 22], maze: [-17, 51] };
 
 const DECOR = {
-  var: { landmark: (x, y) => (house(x, y), house(x + 22, y + 6, "#e9d6f5", "#5c7cfa"), well(x + 12, y + 18)), items: [(x, y) => tree(x, y), (x, y) => fence(x, y), (x, y) => flower(x, y, "#ff6f91"), (x, y) => bush(x, y)] },
+  var: { landmark: (x, y) => (house(x, y), house(x + 22, y + 3, "#e9d6f5", "#5c7cfa"), well(x + 11, y + 7)), items: [(x, y) => tree(x, y), (x, y) => fence(x, y), (x, y) => flower(x, y, "#ff6f91"), (x, y) => bush(x, y)] },
   cond: { landmark: (x, y) => (signpost(x, y), mushroom(x + 10, y + 2)), items: [(x, y) => tree(x, y, "#1f6b2e", "#3f9a45"), (x, y) => tree(x, y), (x, y) => pine(x, y), (x, y) => mushroom(x, y), (x, y) => bush(x, y, "#2f7a35")] },
   loop: { landmark: (x, y, t) => (windmill(x, y, t), flowerRing(x + 24, y - 2)), items: [(x, y) => flower(x, y, "#ffd54f"), (x, y) => bush(x, y), (x, y) => flower(x, y, "#ff6f91"), (x, y) => tree(x, y)] },
   arr: { landmark: (x, y) => [0, 1, 2, 3, 4].forEach((i) => crate(x + i * 9, y)), items: [(x, y) => crate(x, y), (x, y) => rock(x, y, "#b49a6b"), (x, y) => bush(x, y, "#7cb342")] },
@@ -333,99 +249,178 @@ const DECOR = {
   maze: { landmark: (x, y, t) => (castle(x, y, t), hedgeMaze(x + 20, y - 22)), items: [(x, y) => bush(x, y, "#2f7a35"), (x, y) => tree(x, y), (x, y) => flower(x, y, "#fff")] },
 };
 
+
+// ---- 共通の描画 ----
+function drawGround(key, ar, seed, t) {
+  const th = THEMES[key] || THEMES.var;
+  R(ar.ox, ar.oy, ar.w, ar.h, th.ground);
+  const rnd = mulberry(seed);
+  const n = Math.round((ar.w * ar.h) / 150);
+  for (let k = 0; k < n; k++) R(ar.ox + rnd() * ar.w, ar.oy + rnd() * ar.h, 1, 1, k % 2 ? th.dot1 : th.dot2);
+  if (key === "arr") water(ar.ox, ar.oy + ar.h - Math.round(ar.h * 0.2), ar.w, Math.round(ar.h * 0.2), t);
+}
+
+function drawRoads(segs, width) {
+  const stamp = (pad, color) => {
+    for (const [a, b] of segs) {
+      const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
+      for (let s = 0; s <= steps; s++) {
+        const x = a.x + ((b.x - a.x) * s) / steps;
+        const y = a.y + ((b.y - a.y) * s) / steps;
+        R(x - width / 2 - pad, y - width / 2 - pad, width + pad * 2, width + pad * 2, color);
+      }
+    }
+  };
+  stamp(1, "#b98d55");
+  stamp(0, "#ead2a0");
+}
+
 /**
- * マップ全体を描く。genreKeys はエリアの順番、layout は computeLayout の結果
+ * エリア1つ分の飾りを置く。
+ * opts.landmark: {x, y} を指定するとその場所（足元中央）に、無ければ道から離れた候補地に置く
+ * opts.avoid(x, y): true なら置かない場所
  */
-export function drawMap(c, layout, genreKeys, t = 0) {
-  ctx = c.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  const segs = [];
-  for (let i = 0; i < layout.path.length - 1; i++) segs.push([layout.path[i], layout.path[i + 1]]);
+function decorate(key, ar, segs, t, seed, opts = {}) {
+  const deco = DECOR[key] || DECOR.var;
+  const [l0, r0] = SPAN[key] || [-10, 10];
   const nearPath = (x, y, r) => segs.some(([a, b]) => distToSeg(x, y, a, b) < r);
-
-  layout.areas.forEach((ar, i) => {
-    const key = genreKeys[i];
-    const th = THEMES[key] || THEMES.var;
-    R(ar.ox, ar.oy, AREA_W, AREA_H, th.ground);
-    const rnd = mulberry(1000 + i * 77);
-    for (let k = 0; k < 140; k++) {
-      R(ar.ox + rnd() * AREA_W, ar.oy + rnd() * AREA_H, 1, 1, k % 2 ? th.dot1 : th.dot2);
-    }
-    // 港の水辺
-    if (key === "arr") water(ar.ox, ar.oy + AREA_H - 26, AREA_W, 26, t);
-  });
-
-  // 道
-  for (const [a, b] of segs) {
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + ((b.x - a.x) * s) / steps;
-      const y = a.y + ((b.y - a.y) * s) / steps;
-      R(x - ROAD_W / 2 - 1, y - ROAD_W / 2 - 1, ROAD_W + 2, ROAD_W + 2, "#b98d55");
-    }
-  }
-  for (const [a, b] of segs) {
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y));
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + ((b.x - a.x) * s) / steps;
-      const y = a.y + ((b.y - a.y) * s) / steps;
-      R(x - ROAD_W / 2, y - ROAD_W / 2, ROAD_W, ROAD_W, "#ead2a0");
-    }
-  }
-  // 道の小石
-  const rr = mulberry(42);
-  for (const [a, b] of segs) {
-    if (rr() > 0.6) {
-      const s = rr();
-      R(a.x + (b.x - a.x) * s + (rr() - 0.5) * 4, a.y + (b.y - a.y) * s + (rr() - 0.5) * 4, 1, 1, "#c9a76f");
-    }
-  }
-
-  // 装飾（道と看板の場所を避ける）。上から順に描いて奥行きを出す
-  layout.areas.forEach((ar, i) => {
-    const key = genreKeys[i];
-    const deco = DECOR[key] || DECOR.var;
-    const rnd = mulberry(5000 + i * 131);
-    const banner = (x, y) => x < ar.ox + 118 && y < ar.oy + 26;
-    const placed = [];
-    // ランドマーク：道から離れた候補地を選ぶ
+  const avoid = opts.avoid || (() => false);
+  const water = key === "arr" ? ar.oy + ar.h - Math.round(ar.h * 0.2) : Infinity;
+  const placed = [];
+  if (opts.landmark) {
+    const k = opts.landmark.k || 1;
+    const lm = opts.landmark;
+    const fn = k === 1 ? deco.landmark : (x, y, tt) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(k, k);
+      deco.landmark(0, 0, tt);
+      ctx.restore();
+    };
+    placed.push({ x: lm.x, y: lm.y, fn, big: true, l: l0 * k, r: r0 * k, hgt: 32 * k });
+  } else {
     const cands = [
-      [0.2, 0.42],
-      [0.68, 0.3],
-      [0.3, 0.88],
-      [0.7, 0.86],
-      [0.62, 0.56],
-      [0.2, 0.7],
-      [0.82, 0.45],
-      [0.82, 0.75],
-      [0.15, 0.95],
-      [0.8, 0.98],
+      [0.2, 0.42], [0.7, 0.32], [0.3, 0.9], [0.72, 0.88], [0.62, 0.56],
+      [0.2, 0.7], [0.82, 0.45], [0.82, 0.75], [0.15, 0.95], [0.8, 0.98],
     ];
-    const [l0, r0] = SPAN[key] || [-10, 10];
     for (const [fx, fy] of cands) {
-      const x = Math.max(ar.ox + 3 - l0, Math.min(ar.ox + AREA_W - 3 - r0, ar.ox + AREA_W * fx));
-      const y = Math.min(ar.oy + AREA_H - 3, ar.oy + AREA_H * fy);
-      let ok = !banner(x + l0, y - 22) && !banner(x + r0, y - 22);
+      const x = Math.max(ar.ox + 3 - l0, Math.min(ar.ox + ar.w - 3 - r0, ar.ox + ar.w * fx));
+      const y = Math.min(ar.oy + ar.h - 3, ar.oy + ar.h * fy);
+      let ok = y < water && !avoid(x + l0, y - 22) && !avoid(x + r0, y - 22);
       for (let sx = l0; ok && sx <= r0; sx += 6) if (nearPath(x + sx, y - 6, 9) || nearPath(x + sx, y - 16, 9)) ok = false;
-      if (key === "arr" && y > ar.oy + AREA_H - 26) ok = false;
       if (ok) {
         placed.push({ x, y, fn: deco.landmark, big: true, l: l0, r: r0 });
         break;
       }
     }
-    for (let k = 0; k < 60 && placed.length < 16; k++) {
-      const x = ar.ox + 8 + rnd() * (AREA_W - 16);
-      const y = ar.oy + 18 + rnd() * (AREA_H - 22);
-      if (key === "arr" && y > ar.oy + AREA_H - 26) continue;
-      if (nearPath(x, y - 5, 13) || banner(x, y - 10)) continue;
-      if (placed.some((p) => (p.big ? x > p.x + p.l - 8 && x < p.x + p.r + 8 && y > p.y - 30 && y < p.y + 8 : Math.abs(p.x - x) < 11 && Math.abs(p.y - y) < 10))) continue;
-      placed.push({ x, y, fn: deco.items[Math.floor(rnd() * deco.items.length)] });
+  }
+  const rnd = mulberry(seed);
+  const want = opts.count || 16;
+  for (let k = 0; k < want * 4 && placed.length < want; k++) {
+    const x = ar.ox + 6 + rnd() * (ar.w - 12);
+    const y = ar.oy + 12 + rnd() * (ar.h - 14);
+    if (y > water) continue;
+    if (nearPath(x, y - 5, 12) || avoid(x, y - 10)) continue;
+    if (placed.some((p) => (p.big ? x > p.x + p.l - 8 && x < p.x + p.r + 8 && y > p.y - (p.hgt || 32) && y < p.y + 8 : Math.abs(p.x - x) < 11 && Math.abs(p.y - y) < 10))) continue;
+    placed.push({ x, y, fn: deco.items[Math.floor(rnd() * deco.items.length)] });
+  }
+  if (key === "arr" && water < Infinity) {
+    const bx = ar.ox + ar.w * 0.8;
+    const by = ar.oy + ar.h - 6;
+    if (!nearPath(bx, by - 4, 14)) placed.push({ x: bx, y: by + Math.round(Math.sin(t * 2)), fn: (x, y) => boat(x, y) });
+  }
+  placed.sort((a, b) => a.y - b.y).forEach((p) => p.fn(p.x, p.y, t));
+}
+
+// ---- ワールドマップ（ジャンルを選ぶ） ----
+/**
+ * 3×3 のエリア。portrait=true ならスマホ縦向けに縦長のエリアにする。
+ * 道は格子状につなぎ、順番を感じさせないようにする。
+ */
+export function worldLayout(count, portrait) {
+  const cols = 3;
+  const w = portrait ? 112 : 160;
+  const h = portrait ? 196 : 112;
+  const rows = Math.ceil(count / cols);
+  const areas = [];
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const ox = col * w;
+    const oy = row * h;
+    const [l0, r0] = [0, 0];
+    areas.push({
+      i, col, row, ox, oy, w, h,
+      plaza: { x: ox + w / 2, y: oy + h * (portrait ? 0.86 : 0.86) },
+      landmarkY: oy + h * (portrait ? 0.7 : 0.72),
+      l0, r0,
+    });
+  }
+  const segs = [];
+  for (let r = 0; r < rows; r++) {
+    const rowAreas = areas.filter((a) => a.row === r);
+    const first = rowAreas[0];
+    const last = rowAreas[rowAreas.length - 1];
+    segs.push([{ x: first.plaza.x, y: first.plaza.y }, { x: last.plaza.x, y: last.plaza.y }]);
+    if (r < rows - 1) {
+      for (let c = 1; c < cols; c++) segs.push([{ x: c * w, y: first.plaza.y }, { x: c * w, y: first.plaza.y + h }]);
     }
-    if (key === "arr") {
-      const bx = ar.ox + AREA_W * 0.8;
-      const by = ar.oy + AREA_H - 8;
-      if (!nearPath(bx, by - 4, 14)) boat(bx, by + Math.round(Math.sin(t * 2) * 1));
-    }
-    placed.sort((a, b) => a.y - b.y).forEach((p) => p.fn(p.x, p.y, t));
+  }
+  return { areas, segs, width: cols * w, height: rows * h, portrait };
+}
+
+export function drawWorld(canvas, layout, keys, t = 0) {
+  ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  layout.areas.forEach((ar, i) => drawGround(keys[i], ar, 1000 + i * 77, t));
+  drawRoads(layout.segs, 7);
+  // 広場（アルゴくんが立つ場所）
+  layout.areas.forEach((ar) => {
+    R(ar.plaza.x - 9, ar.plaza.y - 5, 18, 10, "#b98d55");
+    R(ar.plaza.x - 8, ar.plaza.y - 4, 16, 8, "#f3e0b5");
   });
+  layout.areas.forEach((ar, i) => {
+    const key = keys[i];
+    const [l0, r0] = SPAN[key] || [-10, 10];
+    const k = (r0 - l0) * 2 <= ar.w - 10 ? 2 : 1;
+    const lx = Math.round(ar.ox + ar.w / 2 - ((l0 + r0) * k) / 2);
+    decorate(key, ar, layout.segs, t, 5000 + i * 131, {
+      landmark: { x: lx, y: Math.round(ar.landmarkY), k },
+      count: layout.portrait ? 9 : 10,
+      avoid: (x, y) => y < ar.oy + (layout.portrait ? 30 : 24) || (Math.abs(x - ar.plaza.x) < 14 && Math.abs(y - ar.plaza.y) < 12),
+    });
+  });
+  // エリアの境目に細い影
+  layout.areas.forEach((ar) => {
+    R(ar.ox, ar.oy, ar.w, 1, "rgba(0,0,0,.08)");
+    R(ar.ox, ar.oy, 1, ar.h, "rgba(0,0,0,.08)");
+  });
+}
+
+// ---- エリア（ジャンル内のステージ） ----
+export const SCENE_W = 200;
+export const SCENE_H = 112;
+
+/** 左から右へ続く1本道に、Lv1〜Lv5 の地点を置く */
+export function sceneLayout(levels = 5) {
+  const a = { x: 0, y: SCENE_H * 0.6 };
+  const b = { x: SCENE_W, y: SCENE_H * 0.6 };
+  const wob = [1, -1, 1, -1, 1, -1];
+  const nodes = Array.from({ length: levels }, (_, j) => {
+    const t = 0.12 + (0.76 * j) / Math.max(1, levels - 1);
+    return { x: a.x + (b.x - a.x) * t, y: a.y + 15 * wob[j % wob.length] };
+  });
+  const pts = [a, ...nodes, b];
+  const segs = [];
+  for (let k = 0; k < pts.length - 1; k++) segs.push([pts[k], pts[k + 1]]);
+  return { nodes, segs, width: SCENE_W, height: SCENE_H };
+}
+
+export function drawScene(canvas, key, layout, seedIndex, t = 0) {
+  ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const ar = { ox: 0, oy: 0, w: layout.width, h: layout.height };
+  drawGround(key, ar, 2000 + seedIndex * 53, t);
+  drawRoads(layout.segs, 9);
+  decorate(key, ar, layout.segs, t, 7000 + seedIndex * 97, { count: 22 });
 }

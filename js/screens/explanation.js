@@ -7,7 +7,7 @@ import { Runner } from "../engine/runner.js";
 import { VarBar } from "../engine/varbar.js";
 import { getStage, stageFor } from "../data/stages/index.js";
 import { genreOf } from "../data/genres.js";
-import { codeView, viewToggle, programPanel, speedBar, coloredState, stageLabel } from "./common.js";
+import { codeView, viewToggle, programPanel, speedBar, coloredState, stageLabel, notesBox } from "./common.js";
 
 let x = null;
 
@@ -65,7 +65,7 @@ export default {
     const header = h(
       "header.topbar",
       {},
-      h("button.btn.small", { type: "button", onclick: () => show("stages", { focus: stage.id }) }, "← いちらん"),
+      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }) }, "← もどる"),
       h("h1.topbar-title", {}, `かいせつ ${stageLabel(stage, genre)}`),
       h("div.topbar-right", {}, badge)
     );
@@ -115,9 +115,9 @@ export default {
     });
     const next = stageFor(stage.genre, stage.level + 1);
     const nextBtn = next
-      ? h("button.btn.primary", { type: "button", onclick: () => show(state.isUnlocked(next.genre, next.level) ? "quiz" : "stages", { id: next.id }) }, "次のステージへ ▶")
+      ? h("button.btn.primary", { type: "button", onclick: () => state.isUnlocked(next.genre, next.level) ? show("quiz", { id: next.id }) : show("area", { genre: next.genre, focus: next.id }) }, "次のステージへ ▶")
       : h("button.btn", { type: "button", disabled: true, title: "つぎの ステージは じゅんびちゅう" }, stage.level < 5 ? "次のステージは じゅんびちゅう" : "このジャンルは ぜんぶ クリア！");
-    x.codeSection = h("section.ex-sec", {}, h("h3.sec-title", {}, "疑似コード"), h("div.toggle-row", {}, toggle.el), x.program.el);
+    x.codeSection = h("section.ex-sec", {}, h("h3.sec-title", {}, "疑似コード"), h("div.toggle-row", {}, toggle.el), x.program.el, notesBox(stage));
     const right = h(
       "section.right-panel.explain",
       { "aria-label": "かいせつ" },
@@ -139,7 +139,7 @@ export default {
         {},
         nextBtn,
         h("button.btn", { type: "button", onclick: () => show("quiz", { id: stage.id }) }, "もう一度 とく"),
-        h("button.btn", { type: "button", onclick: () => show("stages", { focus: stage.id }) }, "一覧へ")
+        h("button.btn", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }) }, "一覧へ")
       )
     );
     x.root = h("main.quiz-layout", {}, x.left, right);
@@ -165,6 +165,6 @@ export default {
     if (k === "t" || k === "T") x.toggle.toggle();
     else if (k === "f" || k === "F") x.speed.toggleFast();
     else if ((k === "s" || k === "S") && x.playing) x.speed.skip();
-    else if (k === "Escape") show("stages", { focus: x.stage.id });
+    else if (k === "Escape") show("area", { genre: x.stage.genre, focus: x.stage.id });
   },
 };

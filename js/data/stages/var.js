@@ -28,8 +28,9 @@ const var1 = {
   varColors: {},
   program: {
     ja: ["右へ 2マス 進む", "上へ 1マス 進む", "左へ 1マス 進む"],
-    code: ["右(2)", "上(1)", "左(1)"],
+    code: ["moveRight(2)", "moveUp(1)", "moveLeft(1)"],
   },
+  notes: ["手続 moveRight(n)，moveUp(n)，moveLeft(n) は，アルゴくんをそれぞれ右・上・左へ n マス進める。"],
   question: "この処理を実行したあと、アルゴくんはどこにいますか？",
   answerType: "pos-rel",
   choices: [
@@ -100,13 +101,13 @@ const V2_FIELD = {
   queues: [],
 };
 
-const v2Line1 = [line(1), spawn("n3", 3, 0, 2), pickup("n3"), store("n3", "x")];
+const v2Line1 = [line(1), line(2), spawn("n3", 3, 0, 2), pickup("n3"), store("n3", "x")];
 const v2Line2 = [
-  line(2),
+  line(3),
   takeCopy("x", "cx"),
   put("cx", "calc"),
   spawnOnPad("n2", 2, "calc"),
-  calc("x + 2", 5, "r5"),
+  calc("x ＋ 2", 5, "r5"),
   pickup("r5"),
   store("r5", "y"),
 ];
@@ -121,8 +122,8 @@ const var2 = {
   vars: {},
   varColors: { x: "#4FC3F7", y: "#66BB6A" },
   program: {
-    ja: ["x に 3 を入れる", "x に 2 を足した値を y に入れる", "y から 1 を引いた値を x に入れる"],
-    code: ["x ← 3", "y ← x + 2", "x ← y − 1"],
+    ja: ["整数の 変数 x と y を 用意する", "x に 3 を入れる", "x に 2 を足した値を y に入れる", "y から 1 を引いた値を x に入れる"],
+    code: ["整数型: x, y", "x ← 3", "y ← x ＋ 2", "x ← y － 1"],
   },
   question: "処理が終わったとき、x の値はいくつですか？",
   answerType: "vars",
@@ -130,28 +131,28 @@ const var2 = {
     {
       ja: "x は 3 です",
       code: "x = 3",
-      wrongFeedback: "3行目で x が上書きされます。最後に x に入った値を確かめましょう。",
-      events: [...v2Line1, ...v2Line2, line(3), spawn("w3", 3, 0, 2), pickup("w3"), lockFail("x")],
+      wrongFeedback: "4行目で x が上書きされます。最後に x に入った値を確かめましょう。",
+      events: [...v2Line1, ...v2Line2, line(4), spawn("w3", 3, 0, 2), pickup("w3"), lockFail("x")],
     },
     { ja: "x は 4 です", code: "x = 4", correct: true },
     {
       ja: "x は 5 です",
       code: "x = 5",
-      wrongFeedback: "5 は y の値です。x は 3行目で「y − 1」に更新されます。",
-      events: [...v2Line1, ...v2Line2, line(3), takeCopy("y", "cy"), lockFail("x")],
+      wrongFeedback: "5 は y の値です。x は 4行目で「y － 1」に更新されます。",
+      events: [...v2Line1, ...v2Line2, line(4), takeCopy("y", "cy"), lockFail("x")],
     },
     {
       ja: "x は 7 です",
       code: "x = 7",
-      wrongFeedback: "足し算を重ねていませんか？ 3行目は引き算です。",
+      wrongFeedback: "足し算を重ねていませんか？ 4行目は引き算です。",
       events: [
         ...v2Line1,
         ...v2Line2,
-        line(3),
+        line(4),
         takeCopy("y", "cy"),
         put("cy", "calc"),
         spawnOnPad("w2", 2, "calc"),
-        calc("y + 2", 7, "r7"),
+        calc("y ＋ 2", 7, "r7"),
         pickup("r7"),
         lockFail("x"),
       ],
@@ -160,11 +161,11 @@ const var2 = {
   events: [
     ...v2Line1,
     ...v2Line2,
-    line(3),
+    line(4),
     takeCopy("y", "cy"),
     put("cy", "calc"),
     spawnOnPad("n1", 1, "calc"),
-    calc("y − 1", 4, "r4"),
+    calc("y － 1", 4, "r4"),
     pickup("r4"),
     store("r4", "x"),
     end(),
@@ -172,15 +173,16 @@ const var2 = {
   expectedFinal: { vars: { x: 4, y: 5 } },
   hints: [
     "1行ずつ、x と y の値を メモしながら 進めよう。",
-    "「←」は右側を先に計算して、その結果を左側の変数に入れます。2行目のあと y はいくつ？",
-    "1行目で x=3、2行目で y=3+2=5。3行目は y − 1 を x に入れます。",
+    "「←」は右側を先に計算して、その結果を左側の変数に入れます。3行目のあと y はいくつ？",
+    "2行目で x=3、3行目で y=3＋2=5。4行目は y － 1 を x に入れます。",
   ],
   explanation: {
-    why: "1行目で x=3、2行目で y=x+2=5 になります。3行目で y−1=4 が x に入るので、x の古い値 3 は置き換えられ、x=4 になります。",
+    why: "1行目で x と y を用意し（まだ未定義）、2行目で x=3、3行目で y=x＋2=5 になります。4行目で y－1=4 が x に入るので、x の古い値 3 は置き換えられ、x=4 になります。",
     trace: [
-      { line: 1, state: "x=3" },
-      { line: 2, state: "x=3, y=5" },
-      { line: 3, state: "x=4, y=5" },
+      { line: 1, state: "x, y は 未定義" },
+      { line: 2, state: "x=3" },
+      { line: 3, state: "x=3, y=5" },
+      { line: 4, state: "x=4, y=5" },
     ],
     points: ["代入は右辺を先に計算して、左辺に入れる", "入れた値は古い値を置き換える"],
   },

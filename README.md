@@ -24,7 +24,7 @@ GitHub Pages では、このフォルダをそのまま公開すれば動きま�
 ## 遊び方
 
 1. タイトルの「ゲームかいし」→ アルゴくんのあいさつと遊び方（7ページ・スキップ可）→ ステージ一覧
-2. ワールドマップでエリア（ジャンル）とレベルを選ぶ（ジャンル内は Lv1 クリアで Lv2 … と順に解放。ヘッダーでリスト表示にも切替可）
+2. ワールドマップでエリア（ジャンル）を選び、エリア画面でレベルを選ぶ（ジャンル内は Lv1 クリアで Lv2 … と順に解放）
 3. 処理を読み、4択から答えを選んで「こたえる」
 4. 選んだ答えのとおりにアルゴくんが動き、正解なら ○＋ピンポン、誤答なら ×＋ぶっぶー
 5. 正解すると解説画面（処理の追跡表・疑似コード・ポイント・再実演）
@@ -47,6 +47,7 @@ algoquest-algorithm-game/
 ├─ index.html              # 単一HTML（画面はセクション切替）
 ├─ css/style.css
 ├─ docs/algoquest-spec.md  # 仕様書
+├─ docs/pseudocode-style.md # 疑似コードの書き方（科目B準拠）
 ├─ DECISIONS.md            # 仕様にない細部の判断ログ
 ├─ assets/img/
 │  ├─ algokun_stand.png    # 立ち絵（背景透過済み）
@@ -57,7 +58,7 @@ algoquest-algorithm-game/
 │  ├─ router.js            # show(screen) の自前ルーター
 │  ├─ ui.js                # ダイアログ・トースト・○×オーバーレイ
 │  ├─ state.js             # セーブ/ロード（localStorage: algoquest.save.v2）
-│  ├─ screens/             # title, tutorial, stageList, quiz, explanation, settings, common
+│  ├─ screens/             # title, tutorial, stageList(ワールドマップ), area, quiz, explanation, settings, common
 │  ├─ engine/
 │  │  ├─ world.js          # 論理状態とイベント適用（DOM非依存・検証と共有）
 │  │  ├─ runner.js         # イベントランナー（アニメーション）
@@ -104,7 +105,7 @@ node tools/validate-stages.mjs --complete # 9ジャンル×5レベルが揃っ�
 1. `js/data/stages/<ジャンルキー>.js` を作る（または既存ファイルに追記）。`export default [ステージ, …]` の形。
    イベントは `js/data/stages/helpers.js` の関数（`line`, `moves`, `spawn`, `takeCopy`, `store`, `lockFail` など）で書けます。
 2. `js/data/stages/index.js` に import を追加する。
-3. ステージは仕様書 §9.2 のスキーマに従う。主な決まり：
+3. ステージは仕様書 §9.2 のスキーマに従う。疑似コードは `docs/pseudocode-style.md`（科目B準拠）に従う。主な決まり：
    - `id` は `ジャンルキー-レベル`（例 `loop-1`）
    - `program.ja` と `program.code` は行数・インデントを揃える
    - `choices` はちょうど4つ・`correct: true` は1つ。不正解には `wrongFeedback` と、末尾が `fail` の `events`
