@@ -70,40 +70,54 @@ function select(i) {
   renderChoices();
 }
 
+/** ヒントボタンの表示（開いた数・次が無料か） */
 function renderHints() {
   const rec = state.stageRec(q.stage.id);
-  q.hintArea.innerHTML = "";
-  const opened = rec.hintsUsed.map((u, i) => (u ? i : -1)).filter((i) => i >= 0);
-  if (!opened.length) {
-    q.hintArea.hidden = true;
-  } else {
-    q.hintArea.hidden = false;
-    q.hintArea.append(h("h3.sec-title", {}, "💡 ヒント"));
-    for (const i of opened) q.hintArea.append(h("p.hint", {}, h("b", {}, HINT_NAMES[i] + "："), q.stage.hints[i]));
-  }
+  const opened = rec.hintsUsed.filter(Boolean).length;
   const next = state.nextHint(q.stage.id);
   q.hintBtn.innerHTML = "";
-  q.hintBtn.append("💡 ヒント", next && next.cost === 0 ? h("span.free-tag", {}, "むりょう") : "");
-  q.hintBtn.setAttribute("aria-label", next ? `ヒント（つぎは ${next.cost === 0 ? "むりょう" : next.cost + "コイン"}）` : "ヒント（ぜんぶ ひらいています）");
+  q.hintBtn.append(
+    "💡 ヒント",
+    opened ? h("span.hint-count", {}, `${opened}/3`) : "",
+    next && next.cost === 0 ? h("span.free-tag", {}, "むりょう") : ""
+  );
+  q.hintBtn.setAttribute(
+    "aria-label",
+    `ヒント（${opened}こ ひらいています。${next ? `つぎは ${next.cost === 0 ? "むりょう" : next.cost + "コイン"}` : "ぜんぶ ひらいています"}）`
+  );
 }
 
-async function openHint() {
+/**
+ * ヒントはダイアログで見る（問題画面の中には出さない）。
+ * 開いたヒントは保存されるので、もう一度ボタンを押せば何度でも見られる。
+ */
+async function openHint(justOpened = -1) {
+  if (!q) return;
+  const rec = state.stageRec(q.stage.id);
   const next = state.nextHint(q.stage.id);
-  if (!next) {
-    toast("ヒントは ぜんぶ ひらいています");
-    q.hintArea.scrollIntoView({ block: "nearest" });
-    return;
-  }
-  const costText = next.cost === 0 ? "むりょう（このステージで 1回だけ）" : `${next.cost} コイン`;
-  const ok = await modal({
-    title: `ヒント${HINT_NAMES[next.idx]} を ひらきますか？`,
-    body: h("div", {}, h("p", {}, `ひつようなもの：${costText}`), h("p.muted", {}, `いまの コイン：${state.coins()}　／　ヒントを つかっても 星や コインは へりません`)),
-    actions: [
-      { label: "ひらく", value: true, primary: true },
-      { label: "やめる", value: false },
-    ],
+  const list = h("div.hint-list");
+  rec.hintsUsed.forEach((u, i) => {
+    if (u) list.append(h(`p.hint${i === justOpened ? ".new" : ""}`, {}, h("b", {}, HINT_NAMES[i] + "："), q.stage.hints[i]));
   });
-  if (!ok || !q) return;
+  if (!list.children.length) list.append(h("p.muted", {}, "まだ ヒントを ひらいていません。"));
+  const body = h("div", {}, list);
+  const actions = [];
+  if (next) {
+    const costText = next.cost === 0 ? "むりょう" : `${next.cost} コイン`;
+    body.append(
+      h(
+        "p.muted.hint-next",
+        {},
+        `つぎは ヒント${HINT_NAMES[next.idx]}（${costText}）　いまの コイン：${state.coins()}`,
+        h("br"),
+        "ヒントを つかっても 星や コインは へりません"
+      )
+    );
+    actions.push({ label: `ヒント${HINT_NAMES[next.idx].slice(0, 1)}を ひらく（${costText}）`, value: "open", primary: true });
+  }
+  actions.push({ label: "とじる", value: null, primary: !next });
+  const v = await modal({ title: "💡 ヒント", body, actions });
+  if (v !== "open" || !q) return;
   const r = state.buyHint(q.stage.id);
   if (!r.ok && r.reason === "coins") {
     await modal({ title: "コインが足りません", body: "ステージをクリアすると集まります。ヒントがなくても、なんどでも ちょうせんできるよ。" });
@@ -111,7 +125,7 @@ async function openHint() {
   }
   playSE("pickup");
   renderHints();
-  q.hintArea.scrollIntoView({ block: "nearest", behavior: state.settings().reduceMotion ? "auto" : "smooth" });
+  openHint(r.idx);
 }
 
 function setPlaying(on) {
@@ -206,7 +220,6 @@ export default {
     q.choicesEl = h("div.choices", { role: "radiogroup", "aria-label": "こたえの せんたくし（1〜4キー）" });
     q.answerBtn = h("button.btn.primary.big.answer-btn", { type: "button", onclick: () => answer(), title: "Enterキー" }, "こたえる");
     q.feedback = h("div.feedback", { hidden: true, role: "alert" });
-    q.hintArea = h("div.hint-area", { hidden: true });
     const right = h(
       "section.right-panel",
       { "aria-label": "処理と問題" },
@@ -219,7 +232,6 @@ export default {
       h("p.question", {}, stage.question),
       q.choicesEl,
       q.feedback,
-      q.hintArea,
       h("div.answer-bar", {}, q.answerBtn)
     );
     q.root = h("main.quiz-layout", {}, q.leftPanel, right);

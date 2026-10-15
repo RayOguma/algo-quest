@@ -2289,3 +2289,33 @@ canvas {
     padding: 8px 12px;
   }
 }
+
+/* ---------- ヒント（ダイアログで表示） ---------- */
+.hint-count {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hint-list .hint {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  background: #fffbe6;
+  border: 2px solid #ffe08a;
+  border-radius: 10px;
+  line-height: 1.7;
+}
+
+.hint-list .hint.new {
+  border-color: #ffb300;
+  box-shadow: 0 0 0 3px rgba(255, 179, 0, 0.25);
+}
+
+.hint-next {
+  margin-bottom: 0;
+}
+
+.modal-card {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
