@@ -369,3 +369,86 @@ export function drawFlag(ctx, cx, cy, T, droop) {
   ctx.fill();
   ctx.restore();
 }
+
+/**
+ * スタック（縦の筒）。x0, y0 は一番上のセルの左上、size はセルの数。下から積み、上の口から出し入れする。
+ * name は筒の左に縦書きで出す。
+ */
+export function drawStackTube(ctx, x0, y0, T, size, name, color = "#7E57C2") {
+  const w = T * 0.84;
+  const x = x0 + (T - w) / 2;
+  const top = y0 + T * 0.06;
+  const h = T * size - T * 0.1;
+  ctx.fillStyle = shade(color, 0.82);
+  rr(ctx, x, top, w, h, T * 0.1);
+  ctx.fill();
+  // 左右の壁と底（上は口が開いている）
+  ctx.strokeStyle = shade(color, -0.35);
+  ctx.lineWidth = Math.max(2, T * 0.06);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, top + h);
+  ctx.lineTo(x + w, top + h);
+  ctx.lineTo(x + w, top);
+  ctx.stroke();
+  // 仕切りの目盛り
+  ctx.strokeStyle = shade(color, 0.45);
+  ctx.lineWidth = Math.max(1, T * 0.02);
+  for (let i = 1; i < size; i++) {
+    const yy = y0 + T * i;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.12, yy);
+    ctx.lineTo(x + w * 0.88, yy);
+    ctx.stroke();
+  }
+  ctx.lineCap = "butt";
+  // 名前（左に縦書き）と、出し入れの向き
+  ctx.fillStyle = shade(color, -0.45);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const chars = [...String(name)];
+  const fs = Math.round(Math.min(T * 0.24, (T * size * 0.8) / Math.max(1, chars.length)));
+  ctx.font = `800 ${fs}px "Hiragino Sans","Noto Sans JP",sans-serif`;
+  const sy = y0 + (T * size - fs * 1.1 * chars.length) / 2 + fs * 0.55;
+  chars.forEach((c, i) => ctx.fillText(c, x0 - T * 0.5, sy + i * fs * 1.1));
+  ctx.font = `800 ${Math.round(T * 0.2)}px "Hiragino Sans","Noto Sans JP",sans-serif`;
+  ctx.fillText("⇅", x0 + T / 2, y0 - T * 0.02);
+}
+
+/**
+ * キュー（横の通路）。x0, y0 は左端のセルの左上、size はセルの数。右の入口から入り、左の出口から出る。
+ */
+export function drawQueueLane(ctx, x0, y0, T, size, name, color = "#26A69A") {
+  const h = T * 0.84;
+  const y = y0 + (T - h) / 2;
+  const w = T * size;
+  ctx.fillStyle = shade(color, 0.82);
+  ctx.fillRect(x0, y, w, h);
+  ctx.strokeStyle = shade(color, -0.35);
+  ctx.lineWidth = Math.max(2, T * 0.06);
+  ctx.beginPath();
+  ctx.moveTo(x0, y);
+  ctx.lineTo(x0 + w, y);
+  ctx.moveTo(x0, y + h);
+  ctx.lineTo(x0 + w, y + h);
+  ctx.stroke();
+  ctx.strokeStyle = shade(color, 0.45);
+  ctx.lineWidth = Math.max(1, T * 0.02);
+  for (let i = 1; i < size; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x0 + T * i, y + h * 0.12);
+    ctx.lineTo(x0 + T * i, y + h * 0.88);
+    ctx.stroke();
+  }
+  // 名前（上）と、出口・入口の印
+  ctx.fillStyle = shade(color, -0.45);
+  ctx.textBaseline = "bottom";
+  ctx.textAlign = "center";
+  ctx.font = `800 ${Math.round(T * 0.2)}px "Hiragino Sans","Noto Sans JP",sans-serif`;
+  ctx.fillText(name, x0 + w / 2, y - T * 0.02);
+  ctx.textBaseline = "top";
+  ctx.font = `800 ${Math.round(T * 0.15)}px "Hiragino Sans","Noto Sans JP",sans-serif`;
+  ctx.fillText("← 出口", x0 + T * 0.5, y + h + T * 0.02);
+  ctx.fillText("← 入口", x0 + w - T * 0.5, y + h + T * 0.02);
+}

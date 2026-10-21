@@ -11,6 +11,8 @@ import {
   drawCheckMark,
   drawSpawnSpot,
   drawFlag,
+  drawStackTube,
+  drawQueueLane,
   colorFor,
   ARRAY_COLOR,
   shade,
@@ -70,6 +72,8 @@ export class FieldView {
   reset() {
     this.world.reset();
     this.particles.clear();
+    // スタック・キューに入ったクリスタルの色（取り出したとき元の色に戻すため、入れた順に覚えておく）
+    this.slotColors = {};
     this.vis = {
       char: { x: 0, y: 0, moving: false, flip: false, bounce: 0, alpha: 1, held: null, emote: null, emoteT0: 0, bubble: null },
       boxes: {},
@@ -80,6 +84,8 @@ export class FieldView {
       check: null,
       flag: null,
       padLabels: {},
+      stacks: {},
+      queues: {},
     };
     const d = this.world.dir;
     this.vis.char.flip = d === "left";
@@ -114,6 +120,11 @@ export class FieldView {
     for (const [kind, p] of Object.entries(w.pads)) {
       v.pads[kind] = { items: p.items.map((id) => ({ id, value: w.items[id].value, color: this.colorOf(id) })), lamp: p.lamp };
     }
+    const slots = (name, list) => list.map((value, i) => ({ value, color: (this.slotColors[name] || [])[i] || CONST_COLOR }));
+    v.stacks = {};
+    for (const [name, list] of Object.entries(w.stacks)) v.stacks[name] = slots(name, list);
+    v.queues = {};
+    for (const [name, list] of Object.entries(w.queues)) v.queues[name] = slots(name, list);
     v.floor = {};
     for (const it of Object.values(w.items)) {
       if (it.loc.type === "floor") v.floor[it.id] = { value: it.value, x: it.loc.x, y: it.loc.y, color: this.colorOf(it.id) };
@@ -140,6 +151,17 @@ export class FieldView {
 
   toPx(tx, ty) {
     return { x: (tx + 0.5) * this.T, y: this.oy + (ty + 0.5) * this.T };
+  }
+
+  /** スタック（下から i 番目、0始まり）・キュー（先頭から i 番目）のクリスタルの位置（タイル座標） */
+  slotPos(kind, name, i) {
+    const f = this.stage.field;
+    if (kind === "stack") {
+      const s = f.stacks.find((v) => v.name === name);
+      return { x: s.x, y: s.y + s.size - 1 - i };
+    }
+    const q = f.queues.find((v) => v.name === name);
+    return { x: q.x + i, y: q.y };
   }
 
   destroy() {
@@ -258,6 +280,22 @@ export class FieldView {
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
       ctx.fillText(a.name, c0.x - T * 0.45, c0.y);
+    }
+    // スタック・キュー
+    const drawSlots = (kind, name, items) =>
+      items.forEach((it, i) => {
+        if (it.hidden) return;
+        const p = this.slotPos(kind, name, i);
+        const c = this.toPx(p.x + (it.dx || 0), p.y + (it.dy || 0));
+        drawCrystal(ctx, c.x, c.y, T * 0.2 * (it.scale ?? 1), it.value, { color: it.color, alpha: it.alpha ?? 1 });
+      });
+    for (const s of f.stacks || []) {
+      drawStackTube(ctx, s.x * T, this.oy + s.y * T, T, s.size, s.name);
+      drawSlots("stack", s.name, v.stacks[s.name] || []);
+    }
+    for (const q of f.queues || []) {
+      drawQueueLane(ctx, q.x * T, this.oy + q.y * T, T, q.size, q.name);
+      drawSlots("queue", q.name, v.queues[q.name] || []);
     }
     // 床のクリスタル
     for (const it of Object.values(v.floor)) {

@@ -18,6 +18,15 @@ export class VarBar {
       const cv = view.vis.cells[a.name];
       entries.push({ name: a.name, value: cv ? `[${cv.values.join(", ")}]` : "", color: colorFor(stage, a.name) });
     }
+    // スタックは下から、キューは先頭から
+    for (const s of stage.field.stacks || []) {
+      const list = view.vis.stacks[s.name] || [];
+      entries.push({ name: `${s.name}（下から）`, value: `[${list.map((it) => it.value).join(", ")}]`, color: colorFor(stage, s.name) });
+    }
+    for (const q of stage.field.queues || []) {
+      const list = view.vis.queues[q.name] || [];
+      entries.push({ name: `${q.name}（先頭から）`, value: `[${list.map((it) => it.value).join(", ")}]`, color: colorFor(stage, q.name) });
+    }
     const key = JSON.stringify(entries);
     if (key === this.key) return;
     this.key = key;

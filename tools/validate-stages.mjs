@@ -149,8 +149,12 @@ function parseChoiceCode(code, stage) {
     if (rel || m[1] === "0") return { pos: { x: stage.field.start.x + a, y: stage.field.start.y + b } };
     return { pos: { x: a, y: b } };
   }
-  m = /^([A-Za-z_]\w*)\s*=\s*[\[{]([^\]}]*)[\]}]$/.exec(s);
-  if (m) return { arrays: { [m[1]]: m[2].split(",").map((v) => Number(v.trim())) } };
+  // 配列・スタック・キュー：a = {3, 1, 2}（スタックは「スタック = {…}」で下から、キューは先頭から。空は {}）
+  m = /^([A-Za-z_]\w*|スタック|キュー)\s*=\s*[\[{]([^\]}]*)[\]}]$/.exec(s);
+  if (m) {
+    const items = m[2].trim() === "" ? [] : m[2].split(",").map((v) => v.trim());
+    return { arrays: { [m[1]]: items.map((v) => (/^-?\d+$/.test(v) ? Number(v) : v.replace(/^"|"$/g, ""))) } };
+  }
   const parts = s.split(",").map((p) => p.trim());
   const vars = {};
   for (const p of parts) {

@@ -156,6 +156,14 @@ export class Runner {
     if (ev.type === "spawnItem") c[ev.id] = CONST_COLOR;
     else if (ev.type === "takeCopy" && ev.id) c[ev.id] = this.targetColor(ev.box);
     else if (ev.type === "calc" && ev.id) c[ev.id] = RESULT_COLOR;
+    else if (ev.type === "push" || ev.type === "enqueue") {
+      const sc = (this.view.slotColors[ev.target] ||= []);
+      sc.push(this.view.colorOf(ev.id));
+    } else if (ev.type === "pop" || ev.type === "dequeue") {
+      const sc = this.view.slotColors[ev.target] || [];
+      const color = ev.type === "pop" ? sc.pop() : sc.shift();
+      if (ev.id) c[ev.id] = color || CONST_COLOR;
+    }
   }
 
   targetColor(target) {
@@ -392,6 +400,46 @@ export class Runner {
         playSE("store");
         view.sync();
         await this.wait(120);
+        break;
+      }
+      case "push":
+      case "enqueue": {
+        const kind = ev.type === "push" ? "stack" : "queue";
+        const value = w.items[ev.id].value;
+        const color = view.colorOf(ev.id);
+        const info = w.apply(ev);
+        await this.walk(info.from, info.path, DUR.walk);
+        this.face(info.face);
+        vis.char.held = null;
+        const to = view.slotPos(kind, ev.target, info.slot);
+        await this.fly(value, color, this.headPos(), to, DUR.fly, { arc: 0.6 });
+        playSE("store");
+        view.sync();
+        view.particles.sparkle(to.x, to.y, 5);
+        await this.wait(120);
+        break;
+      }
+      case "pop":
+      case "dequeue": {
+        const kind = ev.type === "pop" ? "stack" : "queue";
+        const info = w.apply(ev);
+        await this.walk(info.from, info.path, DUR.walk);
+        this.face(info.face);
+        const list = kind === "stack" ? vis.stacks[ev.target] : vis.queues[ev.target];
+        const from = view.slotPos(kind, ev.target, info.slot);
+        const rest = list.filter((_, i) => i !== info.slot).map((it) => ({ ...it }));
+        if (kind === "stack") vis.stacks[ev.target] = rest;
+        else {
+          rest.forEach((it) => (it.dx = 1)); // 詰める前の位置（1つ後ろ）に描いておく
+          vis.queues[ev.target] = rest;
+        }
+        playSE("pickup");
+        await this.fly(info.value, view.colorOf(info.id), from, this.headPos(), DUR.fly, { arc: 0.5 });
+        if (kind === "queue" && rest.length) {
+          // 残りが 1 つずつ出口側へ詰める
+          await this.tween(DUR.fly, (t) => rest.forEach((it) => (it.dx = 1 - ease(t))));
+        }
+        view.sync();
         break;
       }
       case "setCell": {

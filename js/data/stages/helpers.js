@@ -61,6 +61,38 @@ export function builder(field) {
     cmp(operands, expr, result) {
       return [...lay(operands, "compare"), compare(expr, result)];
     },
+    // ---- 値を手に持つ（スタック・キューに入れる前）。{ ev, id } を返す ----
+    /** 定数のクリスタルを拾う */
+    holdSet(value) {
+      const k = id("k");
+      return { ev: [spawn(k, value, at.x, at.y), pickup(k)], id: k };
+    },
+    /** 変数・配列要素の値のコピーを持つ */
+    holdCopy(src) {
+      const c = id("c");
+      return { ev: [takeCopy(src, c)], id: c };
+    },
+    /** 計算台で計算して、答えを持つ */
+    holdCalc(operands, expr, result) {
+      const r = id("r");
+      return { ev: [...lay(operands, "calc"), calc(expr, result, r), pickup(r)], id: r };
+    },
+    /** 持った値をスタックに積む／キューに並べる（h は holdSet などの戻り値） */
+    push(h, target) {
+      return [...h.ev, { type: "push", id: h.id, target }];
+    },
+    enqueue(h, target) {
+      return [...h.ev, { type: "enqueue", id: h.id, target }];
+    },
+    /** スタック／キューから取り出して、変数・配列要素に入れる */
+    pop(target, dst) {
+      const p = id("p");
+      return [{ type: "pop", target, id: p }, store(p, dst)];
+    },
+    dequeue(target, dst) {
+      const p = id("q");
+      return [{ type: "dequeue", target, id: p }, store(p, dst)];
+    },
   };
 }
 

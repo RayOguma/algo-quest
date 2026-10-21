@@ -54,6 +54,11 @@ export class World {
     for (const p of f.pads || []) this.pads[p.kind] = { ...p, items: [], lamp: null };
     this.doors = {};
     for (const d of f.doors || []) this.doors[d.id] = { ...d, open: !!d.open };
+    // スタック（下から積む縦の筒）とキュー（右から入って左から出る横の通路）。中身は配列で持つ（先頭が下／出口側）
+    this.stacks = {};
+    for (const s of f.stacks || []) this.stacks[s.name] = [...(s.values || [])];
+    this.queues = {};
+    for (const q of f.queues || []) this.queues[q.name] = [...(q.values || [])];
     this.held = null;
     this.visits = [];
     this.line = 0;
@@ -82,6 +87,8 @@ export class World {
       if (a.y === y && x >= a.x && x < a.x + a.values.length) return { kind: "array", obj: a };
     }
     for (const d of f.doors || []) if (d.x === x && d.y === y && !this.doors[d.id].open) return { kind: "door", obj: d };
+    for (const s of f.stacks || []) if (s.x === x && y >= s.y && y < s.y + s.size) return { kind: "stack", obj: s };
+    for (const q of f.queues || []) if (q.y === y && x >= q.x && x < q.x + q.size) return { kind: "queue", obj: q };
     return null;
   }
 
@@ -129,7 +136,26 @@ export class World {
     if (box) return { kind: "box", x: box.x, y: box.y, access: box.access || { x: box.x, y: box.y + 1 }, var: box.var };
     const pad = (f.pads || []).find((p) => p.kind === target);
     if (pad) return { kind: "pad", x: pad.x, y: pad.y, access: pad.access || { x: pad.x, y: pad.y + 1 }, pad: pad.kind };
+    const st = (f.stacks || []).find((s) => s.name === target);
+    if (st) return { kind: "stack", x: st.x, y: st.y, access: st.access || { x: st.x, y: st.y - 1 }, name: st.name };
     throw new WorldError(`対象 "${target}" が見つかりません`);
+  }
+
+  /** キューの入口（side="in"：右端の外）または出口（"out"：左端の外）。アルゴくんはそこに立って入れる／取り出す */
+  queueInfo(name, side) {
+    const q = (this.field.queues || []).find((v) => v.name === name);
+    if (!q) throw new WorldError(`キュー ${name} がありません`);
+    const access = side === "in" ? q.accessIn || { x: q.x + q.size, y: q.y } : q.accessOut || { x: q.x - 1, y: q.y };
+    const x = side === "in" ? q.x + q.size - 1 : q.x;
+    return { kind: "queue", x, y: q.y, access, name: q.name };
+  }
+
+  /** 中身の入れ物（スタック・キュー）の定義 */
+  container(kind, name) {
+    const list = kind === "stack" ? this.field.stacks : this.field.queues;
+    const def = (list || []).find((v) => v.name === name);
+    if (!def) throw new WorldError(`${kind === "stack" ? "スタック" : "キュー"} ${name} がありません`);
+    return def;
   }
 
   readValue(target) {
@@ -166,7 +192,8 @@ export class World {
     return {
       pos: { ...this.pos },
       vars: { ...this.vars },
-      arrays: Object.fromEntries(Object.entries(this.arrays).map(([k, v]) => [k, [...v]])),
+      // スタック・キューの中身も、答えの照合では配列と同じように扱う（スタックは下から、キューは先頭から）
+      arrays: Object.fromEntries([...Object.entries(this.arrays), ...Object.entries(this.stacks), ...Object.entries(this.queues)].map(([k, v]) => [k, [...v]])),
     };
   }
 
@@ -302,6 +329,38 @@ export class World {
         delete this.items[ev.id];
         this.held = null;
         return { ...walk, target: tInfo, old, value };
+      }
+      case "push":
+      case "enqueue": {
+        // 持っているクリスタルを、スタックの一番上／キューの最後に入れる
+        if (this.held !== ev.id) throw new WorldError(`${ev.id} を持っていません（持っているのは ${this.held}）`, ev);
+        const isStack = t === "push";
+        const def = this.container(isStack ? "stack" : "queue", ev.target);
+        const list = isStack ? this.stacks[ev.target] : this.queues[ev.target];
+        if (list.length >= def.size) throw new WorldError(`${ev.target} がいっぱいです`, ev);
+        const tInfo = isStack ? this.targetInfo(ev.target) : this.queueInfo(ev.target, "in");
+        const walk = this.approach(tInfo);
+        const value = this.items[ev.id].value;
+        list.push(value);
+        delete this.items[ev.id];
+        this.held = null;
+        return { ...walk, target: tInfo, slot: list.length - 1, value };
+      }
+      case "pop":
+      case "dequeue": {
+        // スタックの一番上／キューの先頭を取り出して持つ
+        if (this.held) throw new WorldError(`すでに ${this.held} を持っています`, ev);
+        const isStack = t === "pop";
+        this.container(isStack ? "stack" : "queue", ev.target);
+        const list = isStack ? this.stacks[ev.target] : this.queues[ev.target];
+        if (!list.length) throw new WorldError(`${ev.target} が空です`, ev);
+        const tInfo = isStack ? this.targetInfo(ev.target) : this.queueInfo(ev.target, "out");
+        const walk = this.approach(tInfo);
+        const value = isStack ? list.pop() : list.shift();
+        const id = ev.id || this.newId(isStack ? "pop" : "deq");
+        this.items[id] = { id, value, loc: { type: "held" } };
+        this.held = id;
+        return { ...walk, target: tInfo, slot: isStack ? list.length : 0, value, id };
       }
       case "setCell": {
         const arr = this.arrays[ev.array];

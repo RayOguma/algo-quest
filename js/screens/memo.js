@@ -8,6 +8,7 @@ function varNames(stage) {
   const names = Object.keys(stage.varColors || {});
   for (const b of stage.field.boxes || []) if (!names.includes(b.var)) names.push(b.var);
   for (const a of stage.field.arrays || []) if (!names.includes(a.name)) names.push(a.name);
+  for (const s of [...(stage.field.stacks || []), ...(stage.field.queues || [])]) if (!names.includes(s.name)) names.push(s.name);
   return names;
 }
 
