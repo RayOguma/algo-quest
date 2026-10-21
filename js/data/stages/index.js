@@ -4,8 +4,9 @@ import condStages from "./cond.js";
 import loopStages from "./loop.js";
 import arrStages from "./arr.js";
 import searchStages from "./search.js";
+import sortStages from "./sort.js";
 
-export const STAGES = [...varStages, ...condStages, ...loopStages, ...arrStages, ...searchStages];
+export const STAGES = [...varStages, ...condStages, ...loopStages, ...arrStages, ...searchStages, ...sortStages];
 
 const byId = new Map(STAGES.map((s) => [s.id, s]));
 
