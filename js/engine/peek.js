@@ -34,6 +34,8 @@ export function programBlocks(stage) {
  * if 文の中の行なら、その if 文（いちばん内側の くりかえしの中で いちばん外側の if）全体を1つの処理として扱う。
  */
 export function peekUnit(stage, n, blocks = programBlocks(stage)) {
+  // 関数（○で始まる行）がある問題：関数の中の行は呼び出しのたびに何度も実行されるので、「何回目に実行するところまで」を選ぶ
+  if (hasFunction(stage)) return { kind: "line", start: n, end: n, loops: [{ kind: "nth", start: n }] };
   const around = blocks.filter((b) => b.start <= n && n <= b.end);
   const loops = around.filter((b) => b.type === "loop");
   const inner = loops[loops.length - 1];
@@ -57,13 +59,24 @@ const countLines = (events, upto) => {
 export function peekTargets(stage, unit) {
   const ev = stage.events;
   const ranges = [];
+  // 呼び出しの深さ（call で 1 深く、return で 1 浅く）。関数の行は、呼び出し先の中は進めて、同じ階か上の階に戻ったところで止める
+  const depthAt = [];
+  let d = 0;
+  for (const e of ev) {
+    depthAt.push(d);
+    if (e.type === "call") d++;
+    else if (e.type === "return") d--;
+  }
+  const nth = unit.loops[0] && unit.loops[0].kind === "nth";
   for (let i = 0; i < ev.length; i++) {
     if (ev[i].type !== "line" || ev[i].n !== unit.start) continue;
     let j = i + 1;
     for (; j < ev.length; j++) {
       const e = ev[j];
       if (e.type === "end") break;
-      if (e.type === "line" && (unit.kind === "line" || e.n < unit.start || e.n > unit.end)) break;
+      if (nth && depthAt[j] < depthAt[i]) break; // return で呼び出し元へ戻ったところで止める
+      if (e.type !== "line") continue;
+      if (nth ? depthAt[j] <= depthAt[i] : unit.kind === "line" || e.n < unit.start || e.n > unit.end) break;
     }
     ranges.push({ start: i, stop: j });
   }
@@ -82,6 +95,7 @@ export function peekTargets(stage, unit) {
     }
     // for はその時点の変数の値、while は何回目か（while の行そのものを選んだときは、その回の判定も数える）
     const keys = unit.loops.map((l) => {
+      if (l.kind === "nth") return out.length + 1;
       if (l.kind === "for") return w.vars[l.var];
       return (l.start === unit.start ? whileCount : r.whileAt)[l.start] || 1;
     });
@@ -97,9 +111,15 @@ export function totalSteps(stage) {
 
 /** くりかえしの見出し（例：「i の値」「くりかえし（while）」） */
 export function loopLabel(loop) {
+  if (loop.kind === "nth") return `${loop.start}行目を実行する回`;
   return loop.kind === "for" ? `${loop.var} の値` : `${loop.start}行目の繰り返し`;
 }
 
 export function keyText(loop, v) {
   return loop.kind === "for" ? `${loop.var} = ${v}` : `${v}回目`;
+}
+
+/** 関数の定義（○で始まる行）がある問題か */
+export function hasFunction(stage) {
+  return stage.program.code.some((l) => l.trim().startsWith("○"));
 }

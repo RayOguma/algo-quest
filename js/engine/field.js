@@ -13,6 +13,7 @@ import {
   drawFlag,
   drawStackTube,
   drawQueueLane,
+  drawCallCard,
   colorFor,
   ARRAY_COLOR,
   shade,
@@ -86,6 +87,7 @@ export class FieldView {
       padLabels: {},
       stacks: {},
       queues: {},
+      cards: {},
     };
     const d = this.world.dir;
     this.vis.char.flip = d === "left";
@@ -125,6 +127,8 @@ export class FieldView {
     for (const [name, list] of Object.entries(w.stacks)) v.stacks[name] = slots(name, list);
     v.queues = {};
     for (const [name, list] of Object.entries(w.queues)) v.queues[name] = slots(name, list);
+    v.cards = Object.fromEntries(Object.entries(w.cards).map(([d, c]) => [d, { ...c }]));
+    v.depth = w.depth;
     v.floor = {};
     for (const it of Object.values(w.items)) {
       if (it.loc.type === "floor") v.floor[it.id] = { value: it.value, x: it.loc.x, y: it.loc.y, color: this.colorOf(it.id) };
@@ -236,6 +240,28 @@ export class FieldView {
       ctx.textBaseline = "top";
       ctx.fillText(String(i + 1), p.x - T * 0.42, p.y - T * 0.44);
     });
+    // 再帰の階（帯と札）。札は左の 2 マス、階段は stand のマスに描く
+    for (const fl of f.floors || []) {
+      const y0 = this.oy + fl.y * T;
+      const fh = fl.h || 1; // 階の高さ（変数が 2 つの関数は 2 行）
+      ctx.fillStyle = fl.depth % 2 ? "rgba(92,107,192,.07)" : "rgba(141,110,99,.06)";
+      ctx.fillRect(0, y0, W, T * fh);
+      const card = fl.depth === 0 ? { label: fl.label || "メイン", state: "main" } : v.cards[fl.depth];
+      const state = fl.depth === 0 ? "main" : !card ? "empty" : card.active ? "active" : "done";
+      drawCallCard(ctx, T * 0.08, y0 + T * 0.14, T * 1.84, T * (fh - 0.28), T, card ? card.label : "", state, card && card.ret, fl.depth === (v.depth ?? 0));
+      if (fl.depth > 0) {
+        const s = this.toPx(fl.stand.x, fl.stand.y);
+        ctx.strokeStyle = "rgba(121,85,72,.45)";
+        ctx.lineWidth = Math.max(1, T * 0.03);
+        for (let k = 0; k < 3; k++) {
+          const yy = s.y - T * 0.42 + k * T * 0.07;
+          ctx.beginPath();
+          ctx.moveTo(s.x - T * 0.3 + k * T * 0.06, yy);
+          ctx.lineTo(s.x + T * 0.3 - k * T * 0.06, yy);
+          ctx.stroke();
+        }
+      }
+    }
     // 台
     for (const p of f.pads || []) {
       const c = this.toPx(p.x, p.y);
@@ -257,9 +283,9 @@ export class FieldView {
       const bv = v.boxes[b.var] || {};
       const glow = bv.glowT0 ? Math.max(0, 1 - (now - bv.glowT0) / 700) : 0;
       drawBox(ctx, c.x, c.y, T, {
-        name: b.var,
+        name: b.label || b.var,
         value: bv.value,
-        color: colorFor(this.stage, b.var),
+        color: colorFor(this.stage, b.label || b.var),
         glow,
         lock: bv.lock || null,
         lockBlink: bv.lockT0 ? (now - bv.lockT0) / 1000 : 0,

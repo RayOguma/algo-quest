@@ -169,7 +169,7 @@ export class Runner {
   targetColor(target) {
     const cell = parseCellRef(target);
     if (cell) return colorFor(this.view.stage, cell.array) || ARRAY_COLOR;
-    return colorFor(this.view.stage, target);
+    return colorFor(this.view.stage, String(target).split("@")[0]); // 再帰の階ごとの変数「n@2」は n の色
   }
 
   // ---- 位置ヘルパー（タイル座標） ----
@@ -440,6 +440,20 @@ export class Runner {
           await this.tween(DUR.fly, (t) => rest.forEach((it) => (it.dx = 1 - ease(t))));
         }
         view.sync();
+        break;
+      }
+      case "call":
+      case "return": {
+        // 呼び出し：階段を下りて札を出す／戻る：戻り値を持って上の階へ
+        const info = w.apply(ev);
+        if (ev.type === "call") {
+          vis.cards = { ...vis.cards, [info.depth]: { label: ev.label, active: true, t0: performance.now() } };
+          playSE("pop");
+        }
+        await this.walk(info.from, info.path, DUR.walk);
+        view.sync();
+        if (ev.type === "return") playSE("store");
+        await this.wait(160);
         break;
       }
       case "setCell": {

@@ -6,7 +6,10 @@ import { colorFor } from "../engine/parts.js";
 /** 変数・配列の名前（ボックスの色の並び順） */
 function varNames(stage) {
   const names = Object.keys(stage.varColors || {});
-  for (const b of stage.field.boxes || []) if (!names.includes(b.var)) names.push(b.var);
+  for (const b of stage.field.boxes || []) {
+    const name = b.label || b.var; // 再帰の階ごとの変数（n@2）は n として 1 つだけ
+    if (!names.includes(name)) names.push(name);
+  }
   for (const a of stage.field.arrays || []) if (!names.includes(a.name)) names.push(a.name);
   for (const s of [...(stage.field.stacks || []), ...(stage.field.queues || [])]) if (!names.includes(s.name)) names.push(s.name);
   return names;

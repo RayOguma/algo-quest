@@ -37,7 +37,12 @@ function evalExpr(expr, world) {
     const arr = world.arrays[a];
     return arr && arr[i - 1] !== undefined ? `(${arr[i - 1]})` : "NaN";
   });
-  s = s.replace(/[A-Za-z_]\w*/g, (name) => (name in world.vars ? `(${world.vars[name]})` : "NaN"));
+  // 再帰の関数の中では、n は今の階の変数 n@深さ を指す
+  s = s.replace(/[A-Za-z_]\w*/g, (name) => {
+    const scoped = `${name}@${world.depth}`;
+    if (scoped in world.vars) return `(${world.vars[scoped]})`;
+    return name in world.vars ? `(${world.vars[name]})` : "NaN";
+  });
   if (!/^[\d\s+\-*÷%().<>=!&|]+$/.test(s)) return undefined;
   try {
     return parseExpr(s);

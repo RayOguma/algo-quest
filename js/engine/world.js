@@ -59,6 +59,9 @@ export class World {
     for (const s of f.stacks || []) this.stacks[s.name] = [...(s.values || [])];
     this.queues = {};
     for (const q of f.queues || []) this.queues[q.name] = [...(q.values || [])];
+    // 再帰：今の呼び出しの深さ（メイン＝0）と、階ごとの札 { label, active, ret }
+    this.depth = 0;
+    this.cards = {};
     this.held = null;
     this.visits = [];
     this.line = 0;
@@ -361,6 +364,29 @@ export class World {
         this.items[id] = { id, value, loc: { type: "held" } };
         this.held = id;
         return { ...walk, target: tInfo, slot: isStack ? list.length : 0, value, id };
+      }
+      case "call": {
+        // 関数を呼び出す：1つ下の階へ行き、その階の札を出す（その階の変数は新しい呼び出しのものになるので消す）
+        const depth = this.depth + 1;
+        const floor = (this.field.floors || []).find((fl) => fl.depth === depth);
+        if (!floor) throw new WorldError(`${depth}段目の階がありません（呼び出しが深すぎます）`, ev);
+        this.depth = depth;
+        this.cards[depth] = { label: ev.label, active: true, ret: undefined };
+        for (const k of Object.keys(this.vars)) if (k.endsWith(`@${depth}`)) delete this.vars[k];
+        const walk = this.approach({ x: floor.stand.x, y: floor.stand.y, access: floor.stand });
+        return { ...walk, depth, label: ev.label };
+      }
+      case "return": {
+        // 呼び出し元へ戻る：持っているクリスタル（戻り値）を持ったまま 1つ上の階へ。手続（戻り値なし）なら手ぶら
+        if (this.depth === 0) throw new WorldError("メインからは return できません", ev);
+        const card = this.cards[this.depth];
+        card.active = false;
+        card.ret = this.held ? this.items[this.held].value : undefined;
+        const fromDepth = this.depth;
+        this.depth -= 1;
+        const floor = (this.field.floors || []).find((fl) => fl.depth === this.depth);
+        const walk = this.approach({ x: floor.stand.x, y: floor.stand.y, access: floor.stand });
+        return { ...walk, fromDepth, ret: card.ret };
       }
       case "setCell": {
         const arr = this.arrays[ev.array];

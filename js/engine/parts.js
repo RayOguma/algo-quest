@@ -452,3 +452,35 @@ export function drawQueueLane(ctx, x0, y0, T, size, name, color = "#26A69A") {
   ctx.fillText("← 出口", x0 + T * 0.5, y + h + T * 0.02);
   ctx.fillText("← 入口", x0 + w - T * 0.5, y + h + T * 0.02);
 }
+
+/**
+ * 再帰の階の札（例「f(3)」）。x0, y0 は左上、w, h は大きさ。
+ * state："main"（メイン）/"active"（呼び出し中）/"done"（戻った。ret を「→ 6」と出す）/"empty"（まだ呼ばれていない）
+ */
+export function drawCallCard(ctx, x0, y0, w, h, T, label, state, ret, current = false) {
+  ctx.save();
+  if (state === "empty") {
+    ctx.strokeStyle = "rgba(121,85,72,.35)";
+    ctx.setLineDash([T * 0.08, T * 0.06]);
+    ctx.lineWidth = Math.max(1, T * 0.03);
+    rr(ctx, x0, y0, w, h, T * 0.1);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  const base = state === "main" ? "#8D6E63" : "#5C6BC0";
+  ctx.globalAlpha = state === "done" ? 0.55 : 1;
+  ctx.fillStyle = shade(base, 0.78);
+  rr(ctx, x0, y0, w, h, T * 0.1);
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.5, T * (current ? 0.07 : 0.035));
+  ctx.strokeStyle = current ? "#FF7043" : shade(base, -0.3);
+  ctx.stroke();
+  ctx.fillStyle = shade(base, -0.55);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const text = state === "done" && ret !== undefined ? `${label} → ${ret}` : label;
+  fitText(ctx, text, w * 0.9, Math.round(T * 0.26));
+  ctx.fillText(text, x0 + w / 2, y0 + h / 2);
+  ctx.restore();
+}

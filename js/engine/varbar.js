@@ -13,7 +13,8 @@ export class VarBar {
     const boxes = stage.field.boxes || [];
     const arrays = stage.field.arrays || [];
     const entries = [];
-    for (const b of boxes) entries.push({ name: b.var, value: view.vis.boxes[b.var]?.value, color: colorFor(stage, b.var) });
+    // 再帰の階ごとの変数（n@2 など）はフィールドの階に出ているので、ここには出さない
+    for (const b of boxes) if (!b.var.includes("@")) entries.push({ name: b.var, value: view.vis.boxes[b.var]?.value, color: colorFor(stage, b.var) });
     for (const a of arrays) {
       const cv = view.vis.cells[a.name];
       entries.push({ name: a.name, value: cv ? `[${cv.values.join(", ")}]` : "", color: colorFor(stage, a.name) });
