@@ -28,11 +28,17 @@ export default {
       state.setSetting("volume", Number(vol.value));
       playSE("correct");
     });
+    const speedSel = h(
+      "select",
+      { id: "set-speed" },
+      ...state.SPEEDS.map((v) => h("option", { value: String(v), selected: state.speed() === v }, `${v}倍`))
+    );
+    speedSel.addEventListener("change", () => state.setSetting("speed", Number(speedSel.value)));
     const viewSel = h(
       "select",
       { id: "set-codeview" },
-      h("option", { value: "ja", selected: s.codeView === "ja" }, "日本語"),
-      h("option", { value: "code", selected: s.codeView === "code" }, "疑似コード")
+      h("option", { value: "code", selected: s.codeView === "code" }, "疑似コード"),
+      h("option", { value: "ja", selected: s.codeView === "ja" }, "日本語")
     );
     viewSel.addEventListener("change", () => state.setSetting("codeView", viewSel.value));
     el.append(
@@ -46,7 +52,12 @@ export default {
       h(
         "main.settings",
         {},
-        toggleRow("実演を 常に 2倍速にする", "fast", "実演中の ⏩ ボタンでも 切り替えられます"),
+        h(
+          "div.set-row",
+          {},
+          h("label", { for: "set-speed" }, h("span.set-label", {}, "実演の 速さ"), h("small", {}, "実演中の ⏩ ボタンでも 切り替えられます")),
+          speedSel
+        ),
         toggleRow("効果音", "sound"),
         h("div.set-row", {}, h("label", { for: "set-volume" }, h("span.set-label", {}, "音量")), vol),
         h("div.set-row", {}, h("label", { for: "set-codeview" }, h("span.set-label", {}, "はじめの 表示形式")), viewSel),

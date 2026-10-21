@@ -184,7 +184,6 @@ export class FieldView {
     for (let y = 0; y < f.rows; y++) {
       for (let x = 0; x < f.cols; x++) this.drawTile(ctx, x, y, f.tiles[y][x] || " ");
     }
-    this.drawCoords(ctx);
     // スタート地点
     const sp = this.toPx(f.start.x, f.start.y);
     ctx.save();
@@ -339,21 +338,5 @@ export class FieldView {
         ctx.fill();
       }
     }
-  }
-
-  /** 座標の目盛り（解説の「位置：(x,y)」と対応させるため） */
-  drawCoords(ctx) {
-    const f = this.stage.field;
-    const T = this.T;
-    ctx.save();
-    ctx.fillStyle = "rgba(60,90,50,.6)";
-    ctx.font = `700 ${Math.round(T * 0.15)}px "Hiragino Sans","Noto Sans JP",sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    for (let x = 0; x < f.cols; x++) ctx.fillText(String(x), (x + 0.5) * T, this.oy - 1);
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    for (let y = 0; y < f.rows; y++) ctx.fillText(String(y), 2, this.oy + y * T + 2);
-    ctx.restore();
   }
 }

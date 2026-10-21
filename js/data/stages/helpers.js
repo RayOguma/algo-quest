@@ -61,16 +61,6 @@ export function builder(field) {
     cmp(operands, expr, result) {
       return [...lay(operands, "compare"), compare(expr, result)];
     },
-    /** 値を問う誤答：その値を持ってきて検算ロックではじかれる */
-    claim(box, value, reason) {
-      const k = id("k");
-      return [spawn(k, value, at.x, at.y), pickup(k), lockFail(box, reason)];
-    },
-    /** 変数の今の値を持って検算ロックではじかれる */
-    claimCopy(box, src, reason) {
-      const c = id("c");
-      return [takeCopy(src, c), lockFail(box, reason)];
-    },
   };
 }
 
@@ -88,4 +78,45 @@ export function mkField(o) {
     queues: [],
     ...o,
   };
+}
+
+/**
+ * 変数ボックス・計算台・比較台・配列を自動で並べたフィールド（新しいステージ用）。
+ * vars：ボックスにする変数（1〜5個）、arrays：[{ name, values }]（0〜2個、要素は6個まで）
+ */
+export function autoField(vars, { compare = false, calc = true, arrays = [] } = {}) {
+  const n = vars.length;
+  if (!arrays.length) {
+    const rows = n <= 3 ? 5 : n + 2;
+    const cy = n <= 3 ? 2 : 3; // スタートと台の行
+    const ys = n === 1 ? [2] : n === 2 ? [1, 3] : n === 3 ? [0, 2, 4] : vars.map((_, i) => i + 1);
+    const pads = [];
+    if (calc) pads.push({ kind: "calc", x: 3, y: cy - 1, access: { x: 3, y: cy } });
+    if (compare) pads.push({ kind: "compare", x: 3, y: cy + 1, access: { x: 3, y: cy } });
+    return mkField({
+      cols: 8,
+      rows,
+      start: { x: 2, y: cy, dir: "right" },
+      spawn: { x: 1, y: cy },
+      boxes: vars.map((v, i) => ({ var: v, x: 6, y: ys[i], access: { x: 5, y: ys[i] } })),
+      pads,
+    });
+  }
+  // 配列あり：1つめは上の行、2つめは下の行（上から操作）
+  const len = Math.max(...arrays.map((a) => a.values.length));
+  const cols = Math.max(9, len + 4);
+  const rows = arrays.length > 1 || n > 3 ? 7 : 6;
+  const ys = n <= 3 ? [1, 3, 5].slice(0, n) : vars.map((_, i) => i + 1);
+  const pads = [];
+  if (compare) pads.push({ kind: "compare", x: 3, y: 3, access: { x: 3, y: 2 } });
+  if (calc) pads.push({ kind: "calc", x: 5, y: 3, access: { x: 5, y: 4 } });
+  return mkField({
+    cols,
+    rows,
+    start: { x: 1, y: 3, dir: "right" },
+    spawn: { x: 4, y: 2 },
+    arrays: arrays.map((a, i) => (i === 0 ? { name: a.name, x: 1, y: 0, values: a.values } : { name: a.name, x: 1, y: rows - 1, values: a.values, access: "up" })),
+    boxes: vars.map((v, i) => ({ var: v, x: cols - 2, y: ys[i], access: { x: cols - 3, y: ys[i] } })),
+    pads,
+  });
 }

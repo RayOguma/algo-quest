@@ -1,11 +1,10 @@
 // ステージデータ検証（§9.4）
 // 使い方: node tools/validate-stages.mjs [--complete]
-//   --complete : 9ジャンル×5レベルが揃っていることも必須にする（v1.0完了時）
+//   --complete : 9ジャンル×10レベル（6〜10は穴埋め）が揃っていることも必須にする（v1.0完了時）
 import { STAGES } from "../js/data/stages/index.js";
-import { GENRES } from "../js/data/genres.js";
-import { World, WorldError, eventsForChoice, matchesExpected } from "../js/engine/world.js";
+import { GENRES, LEVELS } from "../js/data/genres.js";
+import { World, WorldError, eventsForChoice, stopIndex, reviewLines, matchesExpected, blankLines, blankStopIndex, fillText } from "../js/engine/world.js";
 
-const FAIL_KINDS = new Set(["wall", "lock", "noGoal", "mismatch"]);
 const requireComplete = process.argv.includes("--complete");
 
 const errors = [];
@@ -15,7 +14,10 @@ const warn = (id, msg) => warnings.push(`[${id}] ${msg}`);
 
 const MINUS = /[−–ー－]/g;
 
-/** 式の値を計算（変数・配列参照を現在値に置換して評価）。評価できなければ undefined */
+/**
+ * 式の値を計算（変数・配列参照を現在値に置換して評価）。評価できなければ undefined。
+ * 疑似言語にあわせて ÷ は商の小数点以下を切り捨てる（例：352 ÷ 10 ＝ 35）。
+ */
 function evalExpr(expr, world) {
   let s = String(expr)
     .replace(MINUS, "-")
@@ -23,7 +25,6 @@ function evalExpr(expr, world) {
     .replace(/＜/g, "<")
     .replace(/＞/g, ">")
     .replace(/×/g, "*")
-    .replace(/÷/g, "/")
     .replace(/≧/g, ">=")
     .replace(/≦/g, "<=")
     .replace(/≠/g, "!=")
@@ -34,16 +35,79 @@ function evalExpr(expr, world) {
     .replace(/\bnot\b/g, "!");
   s = s.replace(/([A-Za-z_]\w*)\[(\d+)\]/g, (m, a, i) => {
     const arr = world.arrays[a];
-    return arr && arr[i - 1] !== undefined ? String(arr[i - 1]) : "NaN";
+    return arr && arr[i - 1] !== undefined ? `(${arr[i - 1]})` : "NaN";
   });
-  s = s.replace(/[A-Za-z_]\w*/g, (name) => (name in world.vars ? String(world.vars[name]) : "NaN"));
-  if (!/^[\d\s+\-*/%().<>=!&|]+$/.test(s)) return undefined;
-  s = s.replace(/(?<![<>!=])=(?!=)/g, "==");
+  s = s.replace(/[A-Za-z_]\w*/g, (name) => (name in world.vars ? `(${world.vars[name]})` : "NaN"));
+  if (!/^[\d\s+\-*÷%().<>=!&|]+$/.test(s)) return undefined;
   try {
-    return Function(`"use strict";return (${s});`)();
+    return parseExpr(s);
   } catch {
     return undefined;
   }
+}
+
+/** 小さな式パーサ（優先順位：単項 → × ÷ mod → ＋ － → 比較 → 等しい → and → or） */
+function parseExpr(src) {
+  const toks = src.match(/\d+|<=|>=|==|!=|&&|\|\||[-+*÷%()<>!]/g) || [];
+  let k = 0;
+  const peek = () => toks[k];
+  const eat = (t) => {
+    if (toks[k] !== t) throw new Error(`expected ${t}`);
+    k++;
+  };
+  const LEVELS = [["||"], ["&&"], ["==", "!="], ["<", ">", "<=", ">="], ["+", "-"], ["*", "÷", "%"]];
+  const apply = (op, a, b) => {
+    switch (op) {
+      case "||": return a || b;
+      case "&&": return a && b;
+      case "==": return a === b;
+      case "!=": return a !== b;
+      case "<": return a < b;
+      case ">": return a > b;
+      case "<=": return a <= b;
+      case ">=": return a >= b;
+      case "+": return a + b;
+      case "-": return a - b;
+      case "*": return a * b;
+      case "÷": return Math.trunc(a / b);
+      case "%": return a % b;
+    }
+    throw new Error(op);
+  };
+  const level = (n) => {
+    if (n === LEVELS.length) return unary();
+    let v = level(n + 1);
+    while (LEVELS[n].includes(peek())) {
+      const op = toks[k++];
+      v = apply(op, v, level(n + 1));
+    }
+    return v;
+  };
+  const unary = () => {
+    const t = peek();
+    if (t === "-") {
+      k++;
+      return -unary();
+    }
+    if (t === "!") {
+      k++;
+      return !unary();
+    }
+    if (t === "(") {
+      k++;
+      const v = level(0);
+      eat(")");
+      return v;
+    }
+    if (/^\d+$/.test(t)) {
+      k++;
+      return Number(t);
+    }
+    throw new Error(`token ${t}`);
+  };
+  const v = level(0);
+  if (k !== toks.length) throw new Error("extra tokens");
+  return v;
 }
 
 /** イベント列を空シミュレーション。エラーは配列で返す */
@@ -76,7 +140,7 @@ function simulate(stage, events, label) {
 /** 選択肢の code 表現を解析して、expectedFinal と照合できる形にする */
 function parseChoiceCode(code, stage) {
   const s = String(code).replace(MINUS, "-").replace(/＋/g, "+");
-  let m = /^\(x,\s*y\)\s*=\s*\(\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*\)$/.exec(s);
+  let m = /^\(よこ,\s*たて\)\s*=\s*\(\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*\)$/.exec(s);
   if (m) {
     const rel = /[+-]/.test(m[1]) || /[+-]/.test(m[2]) || stage.answerType === "pos-rel";
     const a = Number(m[1]);
@@ -100,7 +164,7 @@ function parseChoiceCode(code, stage) {
 function checkStage(stage) {
   const id = stage.id || "(idなし)";
   const genreKeys = GENRES.map((g) => g.key);
-  if (!/^[a-z]+-[1-5]$/.test(id)) err(id, "id は「ジャンルキー-レベル」形式にしてください");
+  if (!/^[a-z]+-([1-9]|10)$/.test(id)) err(id, "id は「ジャンルキー-レベル（1〜10）」形式にしてください");
   if (!genreKeys.includes(stage.genre)) err(id, `genre "${stage.genre}" は未定義です`);
   if (id !== `${stage.genre}-${stage.level}`) err(id, "id と genre/level が一致しません");
   for (const k of ["title", "question", "field", "program", "choices", "events", "expectedFinal", "hints", "explanation"]) {
@@ -118,6 +182,25 @@ function checkStage(stage) {
       const ic = /^[\s　]*/.exec(code[i])[0].length;
       if (ij !== ic) warn(id, `${i + 1}行目のインデントが ja/code で揃っていません`);
     });
+
+  // 穴埋め（6〜10）：program に空欄「［a］」、選択肢に fill（空欄ごとに入れるもの）
+  const isBlank = stage.answerType === "blank";
+  const lvDef = LEVELS.find((l) => l.level === stage.level);
+  if (lvDef && !!lvDef.blank !== isBlank) err(id, `Lv${stage.level} は ${lvDef.blank ? "穴埋め（answerType: \"blank\"）" : "穴埋めではない問題"} にしてください`);
+  if (isBlank) {
+    if (!Array.isArray(stage.blanks) || !stage.blanks.length) err(id, "穴埋めには blanks（例 [\"a\"]）が必要です");
+    for (const k of stage.blanks || []) {
+      if (!code.some((l) => l.includes(`［${k}］`))) err(id, `program.code に空欄「［${k}］」がありません`);
+      if (!ja.some((l) => l.includes(`［${k}］`))) err(id, `program.ja に空欄「［${k}］」がありません`);
+      stage.choices.forEach((c, i) => {
+        if (fillText(c, k, "code") === null) err(id, `choice${i + 1} に fill.${k} がありません`);
+      });
+    }
+    if (!blankLines(stage).length) err(id, "空欄のある行がありません");
+    else if (blankStopIndex(stage) < 0) err(id, "空欄の行が events の中で一度も実行されていません");
+    const fills = stage.choices.map((c) => JSON.stringify((stage.blanks || []).map((k) => fillText(c, k, "code"))));
+    if (new Set(fills).size !== fills.length) err(id, "fill が同じ選択肢があります");
+  }
 
   // field
   const f = stage.field;
@@ -155,21 +238,37 @@ function checkStage(stage) {
         err(id, `${label}（正解）の最終状態が expectedFinal と一致しません`);
       if (parsed && !matchesExpected(merge(r.world.snapshot(), parsed), stage.expectedFinal))
         err(id, `${label}（正解）の code "${c.code}" が expectedFinal と矛盾します`);
-      if (!parsed) warn(id, `${label}（正解）の code "${c.code}" は自動照合できない形式です`);
+      if (!parsed && !isBlank) warn(id, `${label}（正解）の code "${c.code}" は自動照合できない形式です`);
     } else {
       if (!c.wrongFeedback) err(id, `${label}（不正解）に wrongFeedback がありません`);
-      if (!Array.isArray(c.events) || c.events.length === 0) {
-        err(id, `${label}（不正解）に events がありません`);
+      // 穴埋めの誤答：その選択肢を入れたプログラムを実行する（events）。目的と合わない結果か、途中の fail で終わる
+      if (isBlank) {
+        if (!Array.isArray(c.events) || !c.events.length) {
+          err(id, `${label}（不正解）に events（その選択肢を入れて実行したときの動き）がありません`);
+          return;
+        }
+        const r = simulate(stage, evs, label);
+        r.problems.forEach((p) => err(id, p));
+        const last = evs[evs.length - 1];
+        if (last.type !== "fail") err(id, `${label}（不正解）の events は fail で終わる必要があります`);
+        if (!r.crashed && last.kind === "mismatch" && matchesExpected(r.world.snapshot(), stage.expectedFinal))
+          err(id, `${label}（不正解）を入れて実行しても 目的どおりの結果になってしまいます（データを変えて、ちがいが出るようにする）`);
         return;
       }
-      const last = c.events[c.events.length - 1];
-      if (last.type !== "fail" || !FAIL_KINDS.has(last.kind) || !last.reason)
-        err(id, `${label}（不正解）の events は fail（kind: wall/lock/noGoal/mismatch と reason 付き）で終わる必要があります`);
-      const r = simulate(stage, c.events, label);
+      // 追跡の誤答は 読みまちがいの処理を見せず、正しい処理を「読みがずれる行」の手前で止める
+      if (c.events) err(id, `${label}（不正解）に events は書きません（stop で止める位置を指定します）`);
+      if (!c.stop || !Number.isInteger(c.stop.line)) {
+        err(id, `${label}（不正解）に stop: { line } がありません`);
+        return;
+      }
+      if (stopIndex(stage, c) < 0)
+        err(id, `${label}（不正解）の stop：${c.stop ? `${c.stop.line}行目の ${c.stop.nth || 1}回目` : "空欄の行"}は events の中にありません`);
+      for (const n of reviewLines(c, stage)) if (!(n >= 1 && n <= code.length)) err(id, `${label}（不正解）の stop.mark ${n} が処理の範囲外です`);
+      const r = simulate(stage, evs, label);
       r.problems.forEach((p) => err(id, p));
       if (!r.crashed && matchesExpected(r.world.snapshot(), stage.expectedFinal))
-        err(id, `${label}（不正解）の最終状態が expectedFinal と一致してしまいます`);
-      if (parsed && matchesExpected(merge(main.world.snapshot(), parsed), stage.expectedFinal))
+        err(id, `${label}（不正解）の止める位置では もう正解の状態になっています（答えが見えてしまいます）`);
+      if (!isBlank && parsed && matchesExpected(merge(main.world.snapshot(), parsed), stage.expectedFinal))
         err(id, `${label}（不正解）の code "${c.code}" が正解の値と一致してしまいます`);
     }
   });
@@ -208,7 +307,7 @@ for (const s of STAGES) {
 }
 
 const missing = [];
-for (const g of GENRES) for (let lv = 1; lv <= 5; lv++) if (!ids.has(`${g.key}-${lv}`)) missing.push(`${g.key}-${lv}`);
+for (const g of GENRES) for (const { level: lv } of LEVELS) if (!ids.has(`${g.key}-${lv}`)) missing.push(`${g.key}-${lv}`);
 if (missing.length) {
   const msg = `未実装のステージ ${missing.length} 件（${missing.slice(0, 6).join(", ")}${missing.length > 6 ? " …" : ""}）`;
   if (requireComplete) err("all", msg);

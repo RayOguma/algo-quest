@@ -1,83 +1,62 @@
 // ① var（じゅんじょと へんすう）
-import { line, moves, spawn, spawnOnPad, pickup, takeCopy, put, calc, store, end, mismatch, lockFail, emote, builder, mkField } from "./helpers.js";
+import { line, spawn, spawnOnPad, pickup, takeCopy, put, calc, store, end, builder, mkField, autoField } from "./helpers.js";
 
-const V1_FIELD = {
-  cols: 7,
-  rows: 5,
-  tiles: [".......", ".......", ".......", ".......", "......."],
-  start: { x: 1, y: 3, dir: "right" },
-  boxes: [],
-  pads: [],
-  items: [],
-  arrays: [],
-  switches: [],
-  doors: [],
-  stacks: [],
-  queues: [],
-};
+// ---- var-1：上から順に実行する（同じ変数を2回 更新する） ----
+const V1_FIELD = autoField(["x"]);
+const B1 = builder(V1_FIELD);
 
 const var1 = {
   id: "var-1",
   genre: "var",
   level: 1,
-  title: "みぎへ ひだりへ",
-  concepts: ["sequence"],
+  title: "じゅんばんに けいさん",
+  concepts: ["sequence", "assign"],
   intro: "しょりは うえから じゅんばんに 1ぎょうずつ じっこうされるよ。\nじゅんばんどおりに たどってみよう。",
   field: V1_FIELD,
   vars: {},
-  varColors: {},
+  varColors: { x: "#4FC3F7" },
   program: {
-    ja: ["右へ 2マス 進む", "上へ 1マス 進む", "左へ 1マス 進む"],
-    code: ["moveRight(2)", "moveUp(1)", "moveLeft(1)"],
+    ja: ["整数の 変数 x を 用意して、2 を入れる", "x の値に 3 を足して、その答えを x に入れる", "x の値に 2 を かけて、その答えを x に入れる"],
+    code: ["整数型: x ← 2", "x ← x ＋ 3", "x ← x × 2"],
   },
-  notes: ["手続 moveRight(n)，moveUp(n)，moveLeft(n) は，アルゴくんをそれぞれ右・上・左へ n マス進める。"],
-  question: "この処理を実行したあと、アルゴくんはどこにいますか？",
-  answerType: "pos-rel",
+  question: "プログラムを 実行し終わったときの x の値は どれか。",
+  answerType: "vars",
   choices: [
-    { ja: "スタートから 右に1マス、上に1マス", code: "(x, y) = (+1, −1)", correct: true },
+    { ja: "x は 10", code: "x = 10", correct: true },
     {
-      ja: "スタートから 右に2マス、上に1マス",
-      code: "(x, y) = (+2, −1)",
-      wrongFeedback: "3行目の「左へ1マス」を見落としていませんか？",
-      events: [line(1), ...moves("right", 2), line(2), ...moves("up"), mismatch()],
+      ja: "x は 7",
+      code: "x = 7",
+      wrongFeedback: "2行目と3行目の順番を 入れかえて 計算していませんか？ 処理は 上から順に 実行します。先に 2行目で x＝2＋3＝5 になります。",
+      stop: { line: 2 },
     },
     {
-      ja: "スタートから 右に1マス",
-      code: "(x, y) = (+1, 0)",
-      wrongFeedback: "2行目の「上へ」の動きを数えましたか？",
-      events: [line(1), ...moves("right", 2), line(3), ...moves("left"), mismatch()],
+      ja: "x は 5",
+      code: "x = 5",
+      wrongFeedback: "3行目の「x ← x × 2」を 見落としていませんか？ 2行目のあとも 処理は続きます。",
+      stop: { line: 3 },
     },
     {
-      ja: "スタート地点に もどる",
-      code: "(x, y) = (0, 0)",
-      wrongFeedback: "右・上・左と動くと、元の位置には戻りません。右へ2マス進んだのに、左へは1マスしか戻りません。",
-      events: [
-        line(1),
-        ...moves("right", 2),
-        line(2),
-        ...moves("up"),
-        line(3),
-        ...moves("left", 2),
-        ...moves("down"),
-        mismatch("あれ？ もとの ばしょじゃ なかった…"),
-      ],
+      ja: "x は 8",
+      code: "x = 8",
+      wrongFeedback: "3行目では、そのときの x の値（5）全体に 2 を かけます。2＋3×2 のように 3 だけに かけていませんか？",
+      stop: { line: 3 },
     },
   ],
-  events: [line(1), ...moves("right", 2), line(2), ...moves("up"), line(3), ...moves("left"), end()],
-  expectedFinal: { pos: { x: 2, y: 2 }, vars: {} },
+  events: [line(1), ...B1.set("x", 2), line(2), ...B1.calc("x", ["x", 3], "x ＋ 3", 5), line(3), ...B1.calc("x", ["x", 2], "x × 2", 10), end()],
+  expectedFinal: { vars: { x: 10 } },
   hints: [
-    "1行目で スタートから右へ2マス進み、フィールドの (3,3) に着きます。つづけて 2行目・3行目も、フィールドの目もりで1マスずつ たどってみよう。",
-    "2行目で上へ1マス進んで (3,2)。3行目の「左へ1マス」も忘れずに。最後の位置を、スタートの (1,3) とくらべてみよう。",
-    "最後の位置は (2,2)。スタート (1,3) から見ると、右に1マス・上に1マス です。",
+    "1行目で x に 2 が入ります。2行目は、そのときの x の値（2）に 3 を足して、答えを x に入れます。",
+    "2行目のあと x は 5 です。3行目は 新しい x（5）に 2 を かけます。",
+    "5 × 2 ＝ 10 です。",
   ],
   explanation: {
-    why: "処理は上から順に実行されます。右へ2マス、上へ1マス、左へ1マス進むので、スタートから見ると「右に1マス、上に1マス」の位置に着きます。",
+    why: "処理は上から順に実行されます。1行目で x＝2、2行目で x＝2＋3＝5、3行目で x＝5×2＝10 になります。",
     trace: [
-      { line: 1, state: "位置：(3,3)" },
-      { line: 2, state: "位置：(3,2)" },
-      { line: 3, state: "位置：(2,2)" },
+      { line: 1, state: "x=2" },
+      { line: 2, state: "x=5" },
+      { line: 3, state: "x=10" },
     ],
-    points: ["処理は1行目から順番に実行される（順次実行）", "横の動きと縦の動きは分けて数えると間違えにくい"],
+    points: ["処理は1行目から順番に実行される（順次実行）", "「x ← x ＋ 3」は、いまの x の値を使って計算し、その答えで x を置きかえる"],
   },
 };
 
@@ -122,40 +101,35 @@ const var2 = {
   vars: {},
   varColors: { x: "#4FC3F7", y: "#66BB6A" },
   program: {
-    ja: ["整数の 変数 x と y を 用意する", "x に 3 を入れる", "x に 2 を足した値を y に入れる", "y から 1 を引いた値を x に入れる"],
+    ja: [
+      "整数を入れる 変数 x と y を 用意する（まだ 空っぽ）",
+      "x に 3 を入れる",
+      "x の値に 2 を足して、その答えを y に入れる",
+      "y の値から 1 を引いて、その答えを x に入れる",
+    ],
     code: ["整数型: x, y", "x ← 3", "y ← x ＋ 2", "x ← y － 1"],
   },
-  question: "処理が終わったとき、x の値はいくつですか？",
+  question: "プログラムを 実行し終わったときの x の値は どれか。",
   answerType: "vars",
   choices: [
     {
       ja: "x は 3 です",
       code: "x = 3",
       wrongFeedback: "4行目で x が上書きされます。最後に x に入った値を確かめましょう。",
-      events: [...v2Line1, ...v2Line2, line(4), spawn("w3", 3, 0, 2), pickup("w3"), lockFail("x")],
+      stop: { line: 4 },
     },
     { ja: "x は 4 です", code: "x = 4", correct: true },
     {
       ja: "x は 5 です",
       code: "x = 5",
       wrongFeedback: "5 は y の値です。x は 4行目で「y － 1」に更新されます。",
-      events: [...v2Line1, ...v2Line2, line(4), takeCopy("y", "cy"), lockFail("x")],
+      stop: { line: 4 },
     },
     {
       ja: "x は 7 です",
       code: "x = 7",
       wrongFeedback: "足し算を重ねていませんか？ 4行目は引き算です。",
-      events: [
-        ...v2Line1,
-        ...v2Line2,
-        line(4),
-        takeCopy("y", "cy"),
-        put("cy", "calc"),
-        spawnOnPad("w2", 2, "calc"),
-        calc("y ＋ 2", 7, "r7"),
-        pickup("r7"),
-        lockFail("x"),
-      ],
+      stop: { line: 4 },
     },
   ],
   events: [
@@ -173,7 +147,7 @@ const var2 = {
   expectedFinal: { vars: { x: 4, y: 5 } },
   hints: [
     "2行目で x に 3 が入り、3行目で y に 3＋2＝5 が入ります。4行目では、y の 5 を使って x に何が入るかを考えよう。",
-    "「入れる」処理（疑似コードの「←」）では、まず右側の計算をして、その答えを左側の変数に入れます。4行目は「y から 1 を引いた値」を計算してから x に入れます。",
+    "「←」（右の値を 左の変数に 入れる）では、まず右側の計算をして、その答えを左側の変数に入れます。4行目は「y から 1 を引いた値」を計算してから x に入れます。",
     "4行目の計算は 5－1＝4。この 4 が x に入り、x の古い値 3 は消えます。",
   ],
   explanation: {
@@ -184,7 +158,7 @@ const var2 = {
       { line: 3, state: "x=3, y=5" },
       { line: 4, state: "x=4, y=5" },
     ],
-    points: ["値を入れる処理（疑似コードの「←」）は、右側の計算を先にして、その答えを左側の変数に入れる", "変数に新しい値を入れると、古い値は置き換えられる"],
+    points: ["「←」で値を入れる処理は、右側の計算を先にして、その答えを左側の変数に入れる", "変数に新しい値を入れると、古い値は置き換えられる"],
   },
 };
 
@@ -218,15 +192,15 @@ const var3 = {
   varColors: { x: "#4FC3F7", y: "#66BB6A" },
   program: {
     ja: [
-      "整数の 変数 x を 用意して 5 を入れる",
-      "整数の 変数 y を 用意して 3 を入れる",
-      "x と y を 足した値を x に入れる",
-      "x から y を 引いた値を y に入れる",
-      "x から y を 引いた値を x に入れる",
+      "整数の 変数 x を 用意して、5 を入れる",
+      "整数の 変数 y を 用意して、3 を入れる",
+      "x の値と y の値を 足して、その答えを x に入れる",
+      "x の値から y の値を 引いて、その答えを y に入れる",
+      "x の値から y の値を 引いて、その答えを x に入れる",
     ],
     code: ["整数型: x ← 5", "整数型: y ← 3", "x ← x ＋ y", "y ← x － y", "x ← x － y"],
   },
-  question: "処理が終わったとき、x と y の値はいくつですか？",
+  question: "プログラムを 実行し終わったときの x と y の値の 組合せは どれか。",
   answerType: "vars",
   choices: [
     { ja: "x は 3、y は 5", code: "x = 3, y = 5", correct: true },
@@ -234,19 +208,19 @@ const var3 = {
       ja: "x は 8、y は 5",
       code: "x = 8, y = 5",
       wrongFeedback: "4行目までの値は合っています。5行目で x がもう一度 更新されるのを見落としていませんか？",
-      events: [...v3L1, ...v3L2, ...v3L3, ...v3L4, line(5), emote("think"), ...B3.claimCopy("x", "x", "x は 8 の ままじゃ ない みたい…")],
+      stop: { line: 5 },
     },
     {
       ja: "x は 5、y は 3",
       code: "x = 5, y = 3",
       wrongFeedback: "3〜5行目で x と y は どちらも書きかえられます。1行ずつ値を追ってみましょう。",
-      events: [...v3L1, ...v3L2, line(3), emote("think"), ...B3.claim("x", 5, "x は 5 の ままじゃ ない みたい…")],
+      stop: { line: 3 },
     },
     {
       ja: "x は 6、y は 2",
       code: "x = 6, y = 2",
       wrongFeedback: "4行目の x は、3行目で 8 に更新されています。はじめの 5 ではなく 8 を使って計算します。",
-      events: [...v3L1, ...v3L2, ...v3L3, line(4), ...B3.calc("y", [5, "y"], "5 － y", 2), line(5), ...B3.calc("x", ["x", "y"], "x － y", 6), mismatch()],
+      stop: { line: 4 },
     },
   ],
   events: [...v3L1, ...v3L2, ...v3L3, ...v3L4, ...v3L5, end()],
@@ -300,17 +274,17 @@ const var4 = {
   varColors: { a: "#4FC3F7", b: "#66BB6A", c: "#F06292" },
   program: {
     ja: [
-      "整数の 変数 a を 用意して 2 を入れる",
-      "整数の 変数 b を 用意して 5 を入れる",
-      "整数の 変数 c を 用意して 0 を入れる",
-      "a と b を 足した値を c に入れる",
-      "c から a を 引いた値を a に入れる",
-      "a に 2 を かけた値を b に入れる",
-      "c から b を 引いた値を c に入れる",
+      "整数の 変数 a を 用意して、2 を入れる",
+      "整数の 変数 b を 用意して、5 を入れる",
+      "整数の 変数 c を 用意して、0 を入れる",
+      "a の値と b の値を 足して、その答えを c に入れる",
+      "c の値から a の値を 引いて、その答えを a に入れる",
+      "a の値に 2 を かけて、その答えを b に入れる",
+      "c の値から b の値を 引いて、その答えを c に入れる",
     ],
     code: ["整数型: a ← 2", "整数型: b ← 5", "整数型: c ← 0", "c ← a ＋ b", "a ← c － a", "b ← a × 2", "c ← c － b"],
   },
-  question: "処理が終わったとき、a、b、c の値はいくつですか？",
+  question: "プログラムを 実行し終わったときの a、b、c の値の 組合せは どれか。",
   answerType: "vars",
   choices: [
     { ja: "a は 5、b は 10、c は −3", code: "a = 5, b = 10, c = −3", correct: true },
@@ -318,29 +292,19 @@ const var4 = {
       ja: "a は 5、b は 4、c は 3",
       code: "a = 5, b = 4, c = 3",
       wrongFeedback: "6行目の a は、5行目で 5 に更新されています。はじめの 2 ではなく 新しい a を使います。",
-      events: [...v4Decl, ...v4L4, ...v4L5, line(6), ...B4.calc("b", [2, 2], "2 × 2", 4), line(7), ...B4.calc("c", ["c", "b"], "c － b", 3), mismatch()],
+      stop: { line: 6 },
     },
     {
       ja: "a は 5、b は 10、c は 7",
       code: "a = 5, b = 10, c = 7",
       wrongFeedback: "7行目で c が もう一度 更新されます。c は 4行目だけで決まるわけではありません。",
-      events: [...v4Decl, ...v4L4, ...v4L5, ...v4L6, line(7), emote("think"), ...B4.claimCopy("c", "c", "c は 7 の ままじゃ ない みたい…")],
+      stop: { line: 7 },
     },
     {
       ja: "a は −5、b は −10、c は 17",
       code: "a = −5, b = −10, c = 17",
       wrongFeedback: "5行目は「c から a を引く」（c － a）です。引く順番を逆にしていませんか？",
-      events: [
-        ...v4Decl,
-        ...v4L4,
-        line(5),
-        ...B4.calc("a", ["a", "c"], "a － c", -5),
-        line(6),
-        ...B4.calc("b", ["a", 2], "a × 2", -10),
-        line(7),
-        ...B4.calc("c", ["c", "b"], "c － b", 17),
-        mismatch(),
-      ],
+      stop: { line: 5 },
     },
   ],
   events: [...v4Decl, ...v4L4, ...v4L5, ...v4L6, ...v4L7, end()],
@@ -400,18 +364,18 @@ const var5 = {
   varColors: { p: "#4FC3F7", q: "#66BB6A", r: "#F06292", s: "#FFB74D", t: "#9575CD" },
   program: {
     ja: [
-      "整数の 変数 p を 用意して 1 を入れる",
-      "整数の 変数 q を 用意して 1 を入れる",
-      "整数の 変数 r、s、t を 用意する",
-      "p と q を 足した値を r に入れる",
-      "q の値を p に入れる",
-      "r の値を q に入れる",
-      "p と q を 足した値を r に入れる",
-      "q の値を p に入れる",
-      "r の値を q に入れる",
-      "p と q を かけた値を s に入れる",
-      "s から r を 引いた値を t に入れる",
-      "s と t を 足した値を s に入れる",
+      "整数の 変数 p を 用意して、1 を入れる",
+      "整数の 変数 q を 用意して、1 を入れる",
+      "整数の 変数 r、s、t を 用意する（まだ 空っぽ）",
+      "p の値と q の値を 足して、その答えを r に入れる",
+      "q の値を p に 写す（q は そのまま）",
+      "r の値を q に 写す（r は そのまま）",
+      "p の値と q の値を 足して、その答えを r に入れる",
+      "q の値を p に 写す（q は そのまま）",
+      "r の値を q に 写す（r は そのまま）",
+      "p の値と q の値を かけて、その答えを s に入れる",
+      "s の値から r の値を 引いて、その答えを t に入れる",
+      "s の値と t の値を 足して、その答えを s に入れる",
     ],
     code: [
       "整数型: p ← 1",
@@ -428,7 +392,7 @@ const var5 = {
       "s ← s ＋ t",
     ],
   },
-  question: "処理が終わったとき、s と t の値はいくつですか？",
+  question: "プログラムを 実行し終わったときの s と t の値の 組合せは どれか。",
   answerType: "vars",
   choices: [
     { ja: "s は 9、t は 3", code: "s = 9, t = 3", correct: true },
@@ -436,32 +400,19 @@ const var5 = {
       ja: "s は 6、t は 3",
       code: "s = 6, t = 3",
       wrongFeedback: "12行目で s が もう一度 更新されます。最後の行まで追いかけましょう。",
-      events: [...v5Upto(11), line(12), emote("think"), ...B5.claimCopy("s", "s", "s は 6 の ままじゃ ない みたい…")],
+      stop: { line: 12 },
     },
     {
       ja: "s は 10、t は 4",
       code: "s = 10, t = 4",
       wrongFeedback: "11行目の r は、7行目で 3 に更新されています。4行目で入れた 2 のままではありません。",
-      events: [...v5Upto(10), line(11), ...B5.calc("t", ["s", 2], "s － 2", 4), line(12), ...B5.calc("s", ["s", "t"], "s ＋ t", 10), mismatch()],
+      stop: { line: 11 },
     },
     {
       ja: "s は 6、t は 2",
       code: "s = 6, t = 2",
       wrongFeedback: "7行目で r が 3 に更新されるのを見落としていませんか？ 7〜9行目は 4〜6行目と同じ形の くりかえしです。",
-      events: [
-        ...v5Upto(6),
-        line(7),
-        emote("think"),
-        ...v5[8],
-        ...v5[9],
-        line(10),
-        ...B5.calc("s", ["p", "q"], "p × q", 4),
-        line(11),
-        ...B5.calc("t", ["s", "r"], "s － r", 2),
-        line(12),
-        ...B5.calc("s", ["s", "t"], "s ＋ t", 6),
-        mismatch(),
-      ],
+      stop: { line: 7 },
     },
   ],
   events: [...v5Upto(12), end()],
@@ -489,4 +440,458 @@ const var5 = {
   },
 };
 
-export default [var1, var2, var3, var4, var5];
+// ================= 6〜10：穴埋め（科目Bの「［a］に入れる正しい答えはどれか」の形） =================
+// 空欄の記号 a・b と まぎれないよう、穴埋めの問題では 変数名に a・b を使わない。
+// 誤答は、その選択肢を空欄に入れたプログラムを実行して見せる（目的と合わない結果になる）。
+// どの誤答も、このデータで 目的と ちがう結果になるように 値を選ぶ（検証スクリプトが確かめる）。
+
+// ---- var-6：2つの値の入れかえ ----
+const V6_FIELD = autoField(["x", "y", "t"]);
+/** 5行目「x ← ［a］」に a を入れたときの動き */
+function var6Run(a) {
+  const B = builder(V6_FIELD);
+  const ev = [line(1), ...B.set("x", 3), line(2), ...B.set("y", 8), line(3), line(4), ...B.copy("t", "x"), line(5)];
+  if (a === "y － x") ev.push(...B.calc("x", ["y", "x"], "y － x", 5));
+  else ev.push(...B.copy("x", a));
+  ev.push(line(6), ...B.copy("y", "t"));
+  return ev;
+}
+
+const var6 = {
+  id: "var-6",
+  genre: "var",
+  level: 6,
+  title: "いれかえの あな",
+  concepts: ["assign", "swap", "blank"],
+  intro: "ここからは あなうめ もんだい。［a］ に はいる ものを えらぼう。\n「ここまで すすめる」は、あなの てまえまで つかえるよ。",
+  field: V6_FIELD,
+  vars: {},
+  varColors: { x: "#4FC3F7", y: "#66BB6A", t: "#FFB74D" },
+  program: {
+    ja: [
+      "整数の 変数 x を 用意して、3 を入れる",
+      "整数の 変数 y を 用意して、8 を入れる",
+      "整数の 変数 t を 用意する（まだ 空っぽ）",
+      "x の値を t に 写す（x は そのまま）",
+      "［a］ の値を x に 写す",
+      "t の値を y に 写す（t は そのまま）",
+    ],
+    code: ["整数型: x ← 3", "整数型: y ← 8", "整数型: t", "t ← x", "x ← ［a］", "y ← t"],
+  },
+  question: "次のプログラムは、変数 x と y の値を 入れ替える。\nプログラム中の ［a］ に入れる 正しい答えは どれか。",
+  answerType: "blank",
+  blanks: ["a"],
+  choices: [
+    { ja: "y", code: "y", fill: { a: "y" }, correct: true },
+    {
+      ja: "t",
+      code: "t",
+      fill: { a: "t" },
+      wrongFeedback: "t には 4行目で x の値（3）を とってあります。x ← t では x は 3 のまま、6行目で y も 3 になり、8 が どこにも 残りません。",
+      events: var6Run("t"),
+    },
+    {
+      ja: "x",
+      code: "x",
+      fill: { a: "x" },
+      wrongFeedback: "x ← x では x は 3 のまま 変わりません。x に入れたいのは もう一方の y の値（8）です。",
+      events: var6Run("x"),
+    },
+    {
+      ja: "y － x",
+      code: "y － x",
+      fill: { a: "y － x" },
+      wrongFeedback: "y － x は 8－3＝5 です。x に入れたいのは y の値（8）そのものです。",
+      events: var6Run("y － x"),
+    },
+  ],
+  events: [...var6Run("y"), end()],
+  expectedFinal: { vars: { x: 8, y: 3 } },
+  hints: [
+    "4行目で t に x の値（3）を とっておきます。こうすると x を上書きしても 3 は なくなりません。",
+    "5行目で x に入れたいのは、もう一方の変数の値です。6行目では t にとっておいた 3 を y に入れます。",
+    "［a］ は y。x に y の値（8）を入れると、最後に x＝8、y＝3 になります。",
+  ],
+  explanation: {
+    why: "2つの変数を入れかえるときは、片方の値を いったん t に とっておきます。4行目で t＝3、5行目で x に y の値 8 を入れ、6行目で y に t の 3 を入れると、x＝8、y＝3 になります。",
+    trace: [
+      { line: 4, state: "x=3, y=8, t=3" },
+      { line: 5, state: "x=8, y=8, t=3" },
+      { line: 6, state: "x=8, y=3, t=3" },
+    ],
+    points: ["値を入れかえるときは、上書きで消える値を 別の変数（t）に とっておく", "「x ← y」は y の値のコピーを x に入れる（y は変わらない）"],
+  },
+};
+
+// ---- var-7：平均（式の計算の順番） ----
+const V7_FIELD = autoField(["x", "y", "z", "sum", "ave"]);
+const V7_EXPR = {
+  "sum ÷ 3": [["sum", 3], 8],
+  "sum ÷ 2": [["sum", 2], 12],
+  "x ＋ y ＋ z ÷ 3": [["x", "y", "z", 3], 16],
+  "sum － 3": [["sum", 3], 21],
+};
+function var7Run(a) {
+  const B = builder(V7_FIELD);
+  const [ops, val] = V7_EXPR[a];
+  return [
+    line(1),
+    ...B.set("x", 5),
+    line(2),
+    ...B.set("y", 7),
+    line(3),
+    ...B.set("z", 12),
+    line(4),
+    ...B.calc("sum", ["x", "y", "z"], "x ＋ y ＋ z", 24),
+    line(5),
+    ...B.calc("ave", ops, a, val),
+  ];
+}
+
+const var7 = {
+  id: "var-7",
+  genre: "var",
+  level: 7,
+  title: "へいきんの あな",
+  concepts: ["assign", "expression", "blank"],
+  field: V7_FIELD,
+  vars: {},
+  varColors: { x: "#4FC3F7", y: "#66BB6A", z: "#F06292", sum: "#FFB74D", ave: "#9575CD" },
+  program: {
+    ja: [
+      "整数の 変数 x を 用意して、5 を入れる",
+      "整数の 変数 y を 用意して、7 を入れる",
+      "整数の 変数 z を 用意して、12 を入れる",
+      "整数の 変数 sum を 用意して、x と y と z の値を 足した答えを 入れる",
+      "整数の 変数 ave を 用意して、［a］ を 入れる",
+    ],
+    code: ["整数型: x ← 5", "整数型: y ← 7", "整数型: z ← 12", "整数型: sum ← x ＋ y ＋ z", "整数型: ave ← ［a］"],
+  },
+  notes: ["÷ は割り算で，答えの小数点以下は切り捨てる（例：7 ÷ 2 は 3）。"],
+  question: "次のプログラムは、x、y、z の 平均値を ave に 格納する。\nプログラム中の ［a］ に入れる 正しい答えは どれか。",
+  answerType: "blank",
+  blanks: ["a"],
+  choices: [
+    { ja: "sum を 3 で 割った値", code: "sum ÷ 3", fill: { a: { code: "sum ÷ 3", ja: "sum を 3 で 割った値" } }, correct: true },
+    {
+      ja: "sum を 2 で 割った値",
+      code: "sum ÷ 2",
+      fill: { a: { code: "sum ÷ 2", ja: "sum を 2 で 割った値" } },
+      wrongFeedback: "sum ÷ 2 は 24÷2＝12 です。平均は 合計を 値の 個数で 割ります。値は x、y、z の 3個です。",
+      events: var7Run("sum ÷ 2"),
+    },
+    {
+      ja: "x と y と、z を 3 で 割った値を 足した値",
+      code: "x ＋ y ＋ z ÷ 3",
+      fill: { a: { code: "x ＋ y ＋ z ÷ 3", ja: "x と y と、z を 3 で 割った値を 足した値" } },
+      wrongFeedback: "÷ は ＋ より先に 計算します。x ＋ y ＋ z ÷ 3 は 5＋7＋(12÷3)＝16 になってしまいます。",
+      events: var7Run("x ＋ y ＋ z ÷ 3"),
+    },
+    {
+      ja: "sum から 3 を 引いた値",
+      code: "sum － 3",
+      fill: { a: { code: "sum － 3", ja: "sum から 3 を 引いた値" } },
+      wrongFeedback: "sum － 3 は 24－3＝21 です。平均は 合計を 個数で「割った」値です。",
+      events: var7Run("sum － 3"),
+    },
+  ],
+  events: [...var7Run("sum ÷ 3"), end()],
+  expectedFinal: { vars: { ave: 8 } },
+  hints: [
+    "4行目で sum に 5＋7＋12＝24 が入ります。平均は「合計 ÷ 個数」です。",
+    "値は x、y、z の 3個。合計の sum を いくつで 割ればよいかな？ また、× と ÷ は ＋ と － より先に計算することに 注意しよう。",
+    "［a］ は sum ÷ 3。24 ÷ 3 ＝ 8 です。",
+  ],
+  explanation: {
+    why: "平均は 合計を 個数で割った値です。4行目で sum＝24 を求めたので、5行目は sum ÷ 3 で ave＝8 になります。x ＋ y ＋ z ÷ 3 と書くと、割り算が先に計算されて 16 になってしまいます。",
+    trace: [
+      { line: 4, state: "sum=24" },
+      { line: 5, state: "ave=8" },
+    ],
+    points: ["平均 ＝ 合計 ÷ 個数", "× と ÷ は ＋ と － より先に計算する（式の順番に注意）"],
+  },
+};
+
+// ---- var-8：十の位（mod と ÷） ----
+const V8_FIELD = autoField(["n", "one", "ten"]);
+const V8_EXPR = {
+  "(n － one) ÷ 10": [["n", "one", 10], 4],
+  "n － one": [["n", "one"], 40],
+  "n mod 10": [["n", 10], 7],
+  "(n － one) mod 10": [["n", "one", 10], 0],
+};
+function var8Run(a) {
+  const B = builder(V8_FIELD);
+  const [ops, val] = V8_EXPR[a];
+  return [line(1), ...B.set("n", 47), line(2), ...B.calc("one", ["n", 10], "n mod 10", 7), line(3), ...B.calc("ten", ops, a, val)];
+}
+
+const var8 = {
+  id: "var-8",
+  genre: "var",
+  level: 8,
+  title: "じゅうのくらいの あな",
+  concepts: ["assign", "mod", "blank"],
+  field: V8_FIELD,
+  vars: {},
+  varColors: { n: "#4FC3F7", one: "#66BB6A", ten: "#F06292" },
+  program: {
+    ja: [
+      "整数の 変数 n を 用意して、47 を入れる",
+      "整数の 変数 one を 用意して、n を 10 で 割った余りを 入れる",
+      "整数の 変数 ten を 用意して、［a］ を 入れる",
+    ],
+    code: ["整数型: n ← 47", "整数型: one ← n mod 10", "整数型: ten ← ［a］"],
+  },
+  notes: ["n mod 10 は，n を 10 で割った余りである。"],
+  question: "次のプログラムは、2けたの 正の整数 n の 一の位の 数字を one に、十の位の 数字を ten に 格納する。\nプログラム中の ［a］ に入れる 正しい答えは どれか。",
+  answerType: "blank",
+  blanks: ["a"],
+  choices: [
+    {
+      ja: "n から one を 引いて 10 で 割った値",
+      code: "(n － one) ÷ 10",
+      fill: { a: { code: "(n － one) ÷ 10", ja: "n から one を 引いて 10 で 割った値" } },
+      correct: true,
+    },
+    {
+      ja: "n から one を 引いた値",
+      code: "n － one",
+      fill: { a: { code: "n － one", ja: "n から one を 引いた値" } },
+      wrongFeedback: "47－7＝40 です。十の位の 4 にするには、さらに 10 で 割ります。",
+      events: var8Run("n － one"),
+    },
+    {
+      ja: "n を 10 で 割った余り",
+      code: "n mod 10",
+      fill: { a: { code: "n mod 10", ja: "n を 10 で 割った余り" } },
+      wrongFeedback: "n mod 10 は 一の位（7）です。2行目の one と 同じに なってしまいます。",
+      events: var8Run("n mod 10"),
+    },
+    {
+      ja: "n から one を 引いて 10 で 割った余り",
+      code: "(n － one) mod 10",
+      fill: { a: { code: "(n － one) mod 10", ja: "n から one を 引いて 10 で 割った余り" } },
+      wrongFeedback: "40 を 10 で 割った「余り」は 0 です。十の位は 割った「答え」の方です。",
+      events: var8Run("(n － one) mod 10"),
+    },
+  ],
+  events: [...var8Run("(n － one) ÷ 10"), end()],
+  expectedFinal: { vars: { one: 7, ten: 4 } },
+  hints: [
+    "2行目で one に 一の位の 7 が入ります。十の位は 47 の「4」です。",
+    "47 から 一の位を 引くと 40。そこから 4 を 取り出すには？",
+    "［a］ は (n － one) ÷ 10。40 ÷ 10 ＝ 4 です。",
+  ],
+  explanation: {
+    why: "2行目で one＝47 mod 10＝7。47 から 7 を引いた 40 を 10 で 割ると、十の位の 4 が求められます。",
+    trace: [
+      { line: 2, state: "one=7" },
+      { line: 3, state: "ten=4" },
+    ],
+    points: ["mod は割り算の余り。n mod 10 は一の位", "(n － 一の位) ÷ 10 で 十の位が求められる"],
+  },
+};
+
+// ---- var-9：3けたの数の 各けたを 逆に並べる（空欄2つ） ----
+const V9_FIELD = autoField(["n", "h", "t", "o", "r"]);
+const V9_A = {
+  "(n ÷ 10) mod 10": [["n", 10, 10], 5],
+  "n ÷ 10": [["n", 10], 35],
+  "n mod 100": [["n", 100], 52],
+};
+const V9_B = {
+  "o × 100 ＋ t × 10 ＋ h": ["o", 100, "t", 10, "h"],
+  "h × 100 ＋ t × 10 ＋ o": ["h", 100, "t", 10, "o"],
+};
+function var9Run(a, b) {
+  const B = builder(V9_FIELD);
+  const [opsA, t] = V9_A[a];
+  const h = 3;
+  const o = 2;
+  const r = b.startsWith("o") ? o * 100 + t * 10 + h : h * 100 + t * 10 + o;
+  return [
+    line(1),
+    ...B.set("n", 352),
+    line(2),
+    ...B.calc("h", ["n", 100], "n ÷ 100", h),
+    line(3),
+    ...B.calc("t", opsA, a, t),
+    line(4),
+    ...B.calc("o", ["n", 10], "n mod 10", o),
+    line(5),
+    ...B.calc("r", V9_B[b], b, r),
+  ];
+}
+
+const var9 = {
+  id: "var-9",
+  genre: "var",
+  level: 9,
+  title: "さかさの かずの あな",
+  concepts: ["assign", "div", "mod", "blank"],
+  field: V9_FIELD,
+  vars: {},
+  varColors: { n: "#4FC3F7", h: "#66BB6A", t: "#F06292", o: "#FFB74D", r: "#9575CD" },
+  program: {
+    ja: [
+      "整数の 変数 n を 用意して、352 を入れる",
+      "整数の 変数 h を 用意して、n を 100 で 割った商を 入れる",
+      "整数の 変数 t を 用意して、［a］ を 入れる",
+      "整数の 変数 o を 用意して、n を 10 で 割った余りを 入れる",
+      "整数の 変数 r を 用意して、［b］ を 入れる",
+    ],
+    code: ["整数型: n ← 352", "整数型: h ← n ÷ 100", "整数型: t ← ［a］", "整数型: o ← n mod 10", "整数型: r ← ［b］"],
+  },
+  notes: ["÷ は，商の小数点以下を切り捨てた整数を求める（例：352 ÷ 100 は 3）。", "n mod 10 は，n を 10 で割った余りである。"],
+  question:
+    "次のプログラムは、3けたの正の整数 n の 各けたの数字を 逆の順に 並べた整数を r に 格納する。例えば、n が 352 のとき、r は 253 となる。ここで、h、t、o には それぞれ n の 百の位、十の位、一の位の 数字を 格納する。\nプログラム中の ［a］ と ［b］ に入れる 正しい答えの 組合せは どれか。",
+  answerType: "blank",
+  blanks: ["a", "b"],
+  choices: [
+    {
+      ja: "a：n を 10 で 割った商を 10 で 割った余り　b：o × 100 ＋ t × 10 ＋ h",
+      code: "a：(n ÷ 10) mod 10　b：o × 100 ＋ t × 10 ＋ h",
+      fill: { a: { code: "(n ÷ 10) mod 10", ja: "n を 10 で 割った商を 10 で 割った余り" }, b: "o × 100 ＋ t × 10 ＋ h" },
+      correct: true,
+    },
+    {
+      ja: "a：n を 10 で 割った商　b：o × 100 ＋ t × 10 ＋ h",
+      code: "a：n ÷ 10　b：o × 100 ＋ t × 10 ＋ h",
+      fill: { a: { code: "n ÷ 10", ja: "n を 10 で 割った商" }, b: "o × 100 ＋ t × 10 ＋ h" },
+      wrongFeedback: "352 ÷ 10 は 35 で、十の位の 数字（5）だけでは ありません。百の位の 3 が 残っているので、さらに 10 で 割った余りを 取り出します。",
+      events: var9Run("n ÷ 10", "o × 100 ＋ t × 10 ＋ h"),
+    },
+    {
+      ja: "a：n を 10 で 割った商を 10 で 割った余り　b：h × 100 ＋ t × 10 ＋ o",
+      code: "a：(n ÷ 10) mod 10　b：h × 100 ＋ t × 10 ＋ o",
+      fill: { a: { code: "(n ÷ 10) mod 10", ja: "n を 10 で 割った商を 10 で 割った余り" }, b: "h × 100 ＋ t × 10 ＋ o" },
+      wrongFeedback: "h × 100 ＋ t × 10 ＋ o は、もとの 352 に もどるだけです。逆に 並べるには、一の位の o を 百の位に します。",
+      events: var9Run("(n ÷ 10) mod 10", "h × 100 ＋ t × 10 ＋ o"),
+    },
+    {
+      ja: "a：n を 100 で 割った余り　b：o × 100 ＋ t × 10 ＋ h",
+      code: "a：n mod 100　b：o × 100 ＋ t × 10 ＋ h",
+      fill: { a: { code: "n mod 100", ja: "n を 100 で 割った余り" }, b: "o × 100 ＋ t × 10 ＋ h" },
+      wrongFeedback: "352 mod 100 は 52 で、一の位の 2 が 残っています。十の位の 数字だけを 取り出す必要が あります。",
+      events: var9Run("n mod 100", "o × 100 ＋ t × 10 ＋ h"),
+    },
+  ],
+  events: [...var9Run("(n ÷ 10) mod 10", "o × 100 ＋ t × 10 ＋ h"), end()],
+  expectedFinal: { vars: { r: 253 } },
+  hints: [
+    "352 の 十の位は 5 です。352 ÷ 10 は 35（小数点以下は 切り捨て）。この 35 から 5 だけを 取り出すには？",
+    "逆に 並べると、一の位の o（2）が 百の位、十の位の t（5）は そのまま、百の位の h（3）が 一の位に なります。",
+    "a は (n ÷ 10) mod 10（35 mod 10 ＝ 5）、b は o × 100 ＋ t × 10 ＋ h（200＋50＋3＝253）です。",
+  ],
+  explanation: {
+    why: "十の位は、n ÷ 10 で 一の位を 切り捨てて 35 にし、その一の位を mod 10 で 取り出して 5 です。逆に並べた数は、一の位 o を 百の位に、百の位 h を 一の位に して o × 100 ＋ t × 10 ＋ h ＝ 253 です。",
+    trace: [
+      { line: 2, state: "h=3" },
+      { line: 3, state: "t=5" },
+      { line: 4, state: "o=2" },
+      { line: 5, state: "r=253" },
+    ],
+    points: ["n ÷ 10 で 一の位を 切り捨て、mod 10 で 一の位を 取り出す。組み合わせると 好きな けたが 取り出せる", "けたの数字から 数を 組み立てるときは、百の位 × 100 ＋ 十の位 × 10 ＋ 一の位"],
+  },
+};
+
+// ---- var-10：時刻の計算（24時をこえたら 0時に もどる。空欄2つ） ----
+const V10_FIELD = autoField(["h", "m", "d", "t", "nh", "nm"]);
+const V10_A = {
+  "h × 60 ＋ m ＋ d": [["h", 60, "m", "d"], 1465],
+  "h ＋ m ＋ d": [["h", "m", "d"], 167],
+};
+const V10_B = {
+  "(t ÷ 60) mod 24": [["t", 60, 24], (t) => Math.trunc(t / 60) % 24],
+  "t ÷ 60": [["t", 60], (t) => Math.trunc(t / 60)],
+  "(t mod 60) mod 24": [["t", 60, 24], (t) => (t % 60) % 24],
+};
+function var10Run(a, b) {
+  const B = builder(V10_FIELD);
+  const [opsA, t] = V10_A[a];
+  const [opsB, f] = V10_B[b];
+  return [
+    line(1),
+    ...B.set("h", 22),
+    line(2),
+    ...B.set("m", 50),
+    line(3),
+    ...B.set("d", 95),
+    line(4),
+    ...B.calc("t", opsA, a, t),
+    line(5),
+    ...B.calc("nh", opsB, b, f(t)),
+    line(6),
+    ...B.calc("nm", ["t", 60], "t mod 60", t % 60),
+  ];
+}
+
+const var10 = {
+  id: "var-10",
+  genre: "var",
+  level: 10,
+  title: "とけいの あな",
+  concepts: ["assign", "div", "mod", "blank"],
+  field: V10_FIELD,
+  vars: {},
+  varColors: { h: "#4FC3F7", m: "#66BB6A", d: "#F06292", t: "#FFB74D", nh: "#9575CD", nm: "#26A69A" },
+  program: {
+    ja: [
+      "整数の 変数 h を 用意して、22 を入れる",
+      "整数の 変数 m を 用意して、50 を入れる",
+      "整数の 変数 d を 用意して、95 を入れる",
+      "整数の 変数 t を 用意して、［a］ を 入れる",
+      "整数の 変数 nh を 用意して、［b］ を 入れる",
+      "整数の 変数 nm を 用意して、t を 60 で 割った余りを 入れる",
+    ],
+    code: ["整数型: h ← 22", "整数型: m ← 50", "整数型: d ← 95", "整数型: t ← ［a］", "整数型: nh ← ［b］", "整数型: nm ← t mod 60"],
+  },
+  notes: ["÷ は，商の小数点以下を切り捨てた整数を求める。", "t mod 60 は，t を 60 で割った余りである。"],
+  question:
+    "次のプログラムは、h 時 m 分 から d 分 たった 時刻を、nh 時 nm 分 として 求める。時刻は 24 時間制で、nh は 0 以上 23 以下 とする。例えば、h が 22、m が 50、d が 95 のとき、0 時 25 分 となる。t には、0 時 0 分 から 数えた 分の数を 格納する。\nプログラム中の ［a］ と ［b］ に入れる 正しい答えの 組合せは どれか。",
+  answerType: "blank",
+  blanks: ["a", "b"],
+  choices: [
+    { ja: "a：h × 60 ＋ m ＋ d　b：(t ÷ 60) mod 24", code: "a：h × 60 ＋ m ＋ d　b：(t ÷ 60) mod 24", fill: { a: "h × 60 ＋ m ＋ d", b: "(t ÷ 60) mod 24" }, correct: true },
+    {
+      ja: "a：h ＋ m ＋ d　b：(t ÷ 60) mod 24",
+      code: "a：h ＋ m ＋ d　b：(t ÷ 60) mod 24",
+      fill: { a: "h ＋ m ＋ d", b: "(t ÷ 60) mod 24" },
+      wrongFeedback: "h は「時」なので、分に そろえるには 60 を かけます。h ＋ m ＋ d では 時と分を そのまま 足して しまい、t＝167 に なります。",
+      events: var10Run("h ＋ m ＋ d", "(t ÷ 60) mod 24"),
+    },
+    {
+      ja: "a：h × 60 ＋ m ＋ d　b：t ÷ 60",
+      code: "a：h × 60 ＋ m ＋ d　b：t ÷ 60",
+      fill: { a: "h × 60 ＋ m ＋ d", b: "t ÷ 60" },
+      wrongFeedback: "t ÷ 60 は 24 で、24 時間制の 0〜23 に なりません。24 時を こえたら 0 時に もどすため、24 で 割った余りに します。",
+      events: var10Run("h × 60 ＋ m ＋ d", "t ÷ 60"),
+    },
+    {
+      ja: "a：h × 60 ＋ m ＋ d　b：(t mod 60) mod 24",
+      code: "a：h × 60 ＋ m ＋ d　b：(t mod 60) mod 24",
+      fill: { a: "h × 60 ＋ m ＋ d", b: "(t mod 60) mod 24" },
+      wrongFeedback: "t mod 60 は「分」の 部分（25）です。何時かは、t を 60 で 割った「商」から 求めます。",
+      events: var10Run("h × 60 ＋ m ＋ d", "(t mod 60) mod 24"),
+    },
+  ],
+  events: [...var10Run("h × 60 ＋ m ＋ d", "(t ÷ 60) mod 24"), end()],
+  expectedFinal: { vars: { nh: 0, nm: 25 } },
+  hints: [
+    "t は 0 時 0 分 から 数えた 分の数です。22 時 50 分 は 何分 たった ところかな？（1 時間は 60 分）",
+    "t を 60 で 割った 商が「何時間」。24 時間 たつと 0 時に もどるので、24 で 割った 余りを 使います。",
+    "a は h × 60 ＋ m ＋ d（1465）、b は (t ÷ 60) mod 24（24 mod 24 ＝ 0）。nm は 1465 mod 60 ＝ 25 です。",
+  ],
+  explanation: {
+    why: "時刻を すべて 分に そろえると t ＝ 22 × 60 ＋ 50 ＋ 95 ＝ 1465。t ÷ 60 ＝ 24（時間）、24 時間制なので 24 で割った余りの 0 が nh。t mod 60 ＝ 25 が nm で、0 時 25 分 です。",
+    trace: [
+      { line: 4, state: "t=1465" },
+      { line: 5, state: "nh=0" },
+      { line: 6, state: "nm=25" },
+    ],
+    points: ["単位の ちがう 量は、いちばん 小さい 単位（分）に そろえてから 計算する", "÷ で 大きい単位（時）、mod で のこり（分）を 取り出す", "くり返す 値（24時間）は mod で 範囲に もどす"],
+  },
+};
+
+export default [var1, var2, var3, var4, var5, var6, var7, var8, var9, var10];

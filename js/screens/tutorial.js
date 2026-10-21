@@ -68,26 +68,51 @@ function buildDemo(kind) {
       loop();
     });
   } else if (kind === "toggle") {
-    const btnJa = h("span.seg.on", {}, "日本語");
-    const btnCode = h("span.seg", {}, "疑似コード");
-    const line = h("div.tut-code", {}, h("span.ln", {}, "1"), h("code", {}, "x に 5 を入れる"));
-    box.append(h("div.tut-toggle.spot", {}, btnJa, btnCode), line);
-    let ja = true;
+    const btnJa = h("span.seg", {}, "日本語");
+    const btnCode = h("span.seg.on", {}, "疑似コード");
+    const line = h("div.tut-code", {}, h("span.ln", {}, "1"), h("code", {}, "y ← x ＋ 2"));
+    box.append(h("div.tut-toggle.spot", {}, btnCode, btnJa), line);
+    let ja = false;
     ctx.demoTimer = setInterval(() => {
       ja = !ja;
       btnJa.classList.toggle("on", ja);
       btnCode.classList.toggle("on", !ja);
-      line.querySelector("code").textContent = ja ? "x に 5 を入れる" : "x ← 5";
-    }, 1500);
+      line.querySelector("code").textContent = ja ? "x の値に 2 を足して、その答えを y に入れる" : "y ← x ＋ 2";
+    }, 1800);
   } else if (kind === "speed") {
     box.append(
       h("div.tut-ox", {}, h("span.ox-o", { "aria-label": "せいかい" }, "○"), h("span.ox-x", { "aria-label": "ふせいかい" }, "×")),
-      h("div.tut-speed.spot", {}, h("span.fake-btn", {}, "⏩ 2倍速"), h("span.fake-btn", {}, "⏭ スキップ")),
+      h("div.tut-code.review", {}, h("span.ln", {}, "？4"), h("code", {}, "x ← y － 1")),
+      h("div.tut-speed.spot", {}, h("span.fake-btn", {}, "⏩ 1倍｜2倍｜4倍"), h("span.fake-btn", {}, "⏭ スキップ")),
       h("small", {}, "じつえん ちゅうは フィールドの したに でるよ")
+    );
+  } else if (kind === "peek") {
+    const lines = ["for (i を 1 から 3 まで …)", "  sum ← sum ＋ i", "endfor"].map((t, i) =>
+      h(`div.tut-code${i === 1 ? ".hl" : ""}`, {}, h("span.ln", {}, String(i + 3)), h("code", {}, t))
+    );
+    box.append(...lines, h("div.tut-coins", {}, h("span.fake-btn", {}, "▶ 4行目まで 進める"), h("span", {}, "i = 2 の ところまで"), h("span.coin-icon"), h("b", {}, "8")));
+  } else if (kind === "memo") {
+    box.append(
+      h(
+        "div.tut-memo",
+        {},
+        h("b", {}, "📝 メモ"),
+        h("div.memo-row", {}, h("span.var-inline", { style: { "--c": "#4FC3F7" } }, h("b", {}, "x")), h("span.tut-input", {}, "3 → 4")),
+        h("div.memo-row", {}, h("span.var-inline", { style: { "--c": "#66BB6A" } }, h("b", {}, "y")), h("span.tut-input", {}, "5")),
+        h("span.tut-input.free", {}, "4行目で x が かわる！")
+      )
+    );
+  } else if (kind === "blank") {
+    box.append(
+      h("div.tut-code", {}, h("span.ln", {}, "4"), h("code", {}, "t ← x")),
+      h("div.tut-code.review", {}, h("span.ln", {}, "5"), h("code", {}, "x ← ", h("span.blank", {}, "a"))),
+      h("div.tut-code", {}, h("span.ln", {}, "6"), h("code", {}, "y ← t")),
+      h("div.tut-choices", {}, ...["A. y", "B. t", "C. x", "D. y － x"].map((t, i) => h(`span.tut-choice${i === 0 ? ".pick" : ""}`, {}, t)))
     );
   } else if (kind === "coins") {
     box.append(
-      h("div.tut-coins", {}, h("span.coin-icon"), h("b", {}, "コイン"), h("span", {}, "クリアで もらえる")),
+      h("div.tut-coins", {}, h("span.coin-icon"), h("b", {}, "コイン"), h("span", {}, "クリアと ログインボーナスで もらえる")),
+      h("div.tut-coins", {}, h("span.fake-btn", {}, "🎁 はじめての日"), h("b", {}, "+100"), h("span", {}, "つぎの日からも まいにち 10〜50")),
       h("div.tut-coins", {}, h("span.fake-btn", {}, "💡 ヒント"), h("span", {}, "1つめは むりょう！"))
     );
   }
@@ -140,9 +165,11 @@ function render() {
     text.textContent = page.text;
     ctx.typing = false;
   } else {
+    text.replaceChildren(h("span.tut-rest", { "aria-hidden": "true" }, page.text));
     ctx.typeTimer = setInterval(() => {
       ctx.shown += 1;
-      text.textContent = page.text.slice(0, ctx.shown);
+      // まだ出ていない文字も見えない状態で置いておき、吹き出しの高さ（＝キャラの位置）を変えない
+      text.replaceChildren(page.text.slice(0, ctx.shown), h("span.tut-rest", { "aria-hidden": "true" }, page.text.slice(ctx.shown)));
       if (ctx.shown % 3 === 0 && page.text[ctx.shown - 1] !== " ") playSE("type");
       if (ctx.shown >= page.text.length) {
         clearInterval(ctx.typeTimer);

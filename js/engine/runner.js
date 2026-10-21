@@ -6,7 +6,7 @@ import { CONST_COLOR, RESULT_COLOR } from "./field.js";
 import { colorFor, ARRAY_COLOR } from "./parts.js";
 import { DIRS, parseCellRef } from "./world.js";
 
-// 基本の長さ（ms）。2倍速ではすべて 1/2 になる
+// 基本の長さ（ms）。2倍速・4倍速では 1/2・1/4 になる（速さは利用者の操作だけで変わる）
 const DUR = {
   line: 220,
   move: 700, // 1マス移動（§5.3）
@@ -20,9 +20,6 @@ const DUR = {
   end: 200,
   finale: 750,
 };
-
-// 繰返しの2周目以降の速さ（倍）
-const LOOP_BOOST = 4;
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -50,7 +47,7 @@ export class Runner {
   }
 
   get speed() {
-    return (state.settings().fast ? 2 : 1) * (this.boost || 1);
+    return state.speed();
   }
 
   get vis() {
@@ -112,9 +109,6 @@ export class Runner {
     this.skipping = false;
     this.aborted = false;
     this.startedAt = performance.now();
-    // 繰返しの2周目以降（一度実行した行にもう一度来たとき）は自動で速くする（§6.2⑥）
-    this.seenLines = new Set();
-    this.boost = 1;
     this.hooks.onStart && this.hooks.onStart();
     let skippedAny = false;
     for (const ev of events) {
@@ -245,8 +239,6 @@ export class Runner {
     switch (ev.type) {
       case "line": {
         w.apply(ev);
-        this.boost = this.seenLines.has(ev.n) ? LOOP_BOOST : 1;
-        this.seenLines.add(ev.n);
         this.line(ev.n);
         await this.wait(DUR.line);
         break;
@@ -467,6 +459,15 @@ export class Runner {
       ch.emoteT0 = now();
       vis.check = { state: "green", x: w.pos.x, y: w.pos.y, t0: now() };
       view.particles.burst(w.pos.x, w.pos.y - 0.6, { n: 14 });
+      await this.wait(DUR.finale);
+      return;
+    }
+    if (ev.kind === "review") {
+      // 誤答：正しい処理を途中で止めて「ここを見よう」と考える（失敗の演出はしない）
+      w.apply(ev);
+      if (this.skipping) view.sync();
+      ch.emote = null;
+      ch.bubble = ev.reason;
       await this.wait(DUR.finale);
       return;
     }

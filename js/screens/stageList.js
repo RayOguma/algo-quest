@@ -2,7 +2,7 @@
 import * as state from "../state.js";
 import { show } from "../router.js";
 import { h, coinBadge } from "../ui.js";
-import { GENRES, LEVELS } from "../data/genres.js";
+import { GENRES, LEVELS, MAX_LEVEL, MAX_STARS } from "../data/genres.js";
 import { stageFor } from "../data/stages/index.js";
 import { worldLayout, drawWorld } from "../engine/mapArt.js";
 import { MapChara } from "./mapChara.js";
@@ -78,13 +78,13 @@ function build() {
   layout.areas.forEach((ar, i) => {
     const g = GENRES[i];
     const p = genreProgress(g);
-    const status = p.ready === 0 ? "じゅんびちゅう" : `クリア ${p.cleared}/5`;
+    const status = p.ready === 0 ? "じゅんびちゅう" : `クリア ${p.cleared}/${MAX_LEVEL}`;
     const btn = h(
       "button.region",
       {
         type: "button",
         style: { left: ar.ox * scale + "px", top: ar.oy * scale + "px", width: ar.w * scale + "px", height: ar.h * scale + "px" },
-        "aria-label": `${g.num} ${g.place}（${g.name}） 星 ${p.stars} / 15 ${status}`,
+        "aria-label": `${g.num} ${g.place}（${g.name}） 星 ${p.stars} / ${MAX_STARS} ${status}`,
         title: `${g.name}：${g.desc}`,
       },
       h(
@@ -94,8 +94,8 @@ function build() {
         h(
           "span.rs-sub",
           {},
-          h("span.rs-stars", {}, `★${p.stars}/15`),
-          p.ready === 0 ? h("span.rs-soon", { title: "じゅんびちゅう" }, h("span.rs-soon-text", {}, "じゅんびちゅう")) : h("span.rs-prog", {}, `${p.cleared}/5`)
+          h("span.rs-stars", {}, `★${p.stars}/${MAX_STARS}`),
+          p.ready === 0 ? h("span.rs-soon", { title: "じゅんびちゅう" }, h("span.rs-soon-text", {}, "じゅんびちゅう")) : h("span.rs-prog", {}, `${p.cleared}/${MAX_LEVEL}`)
         )
       )
     );

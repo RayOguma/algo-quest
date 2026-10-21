@@ -70,7 +70,7 @@ algoquest-algorithm-game/
 │  │  ├─ audio.js          # 効果音（Web Audio）
 │  │  └─ varbar.js         # 変数一覧バー
 │  └─ data/
-│     ├─ genres.js         # 9ジャンル・5レベルの定義
+│     ├─ genres.js         # 9ジャンル・10レベル（6〜10は穴埋め）の定義
 │     ├─ tutorial.js       # 遊び方ページのデータ
 │     └─ stages/           # ジャンルごとのステージデータ（var.js, cond.js, …）
 └─ tools/
@@ -94,7 +94,7 @@ algoquest-algorithm-game/
 
 ```sh
 node tools/validate-stages.mjs            # エラーがあれば終了コード1
-node tools/validate-stages.mjs --complete # 9ジャンル×5レベルが揃っていることも必須にする（v1.0）
+node tools/validate-stages.mjs --complete # 9ジャンル×10レベルが揃っていることも必須にする（v1.0）
 ```
 
 選択肢の数・正解の数・行数一致・壁の通り抜け・`line` の範囲・正解/誤答の最終状態・`calc`/`compare` の計算結果などを、

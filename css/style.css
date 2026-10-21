@@ -278,7 +278,11 @@ canvas {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 16px 24px;
+  /* 画面の高さに固定し、つぎへ・もどるは どのページでも同じ位置（下端から少し上：タスクバー等と重ならない）に置く。
+     キャラとセリフは、その上の残りの領域の 上下中央に置く */
+  height: 100vh;
+  height: 100dvh;
+  padding: 16px 16px calc(72px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(160deg, #fdf0ff, #e6f4ff 60%, #effbe9);
 }
 
@@ -300,9 +304,11 @@ canvas {
 
 .tut-stage {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: min(940px, 100%);
   display: flex;
-  align-items: center;
+  align-items: safe center;
   gap: 20px;
 }
 
@@ -554,6 +560,7 @@ canvas {
 }
 
 .tut-nav {
+  flex: none;
   width: min(940px, 100%);
   display: flex;
   align-items: center;
@@ -760,10 +767,15 @@ canvas {
   justify-content: center;
 }
 
-.speed-fast[aria-pressed="true"] {
-  background: #fff3e0;
-  border-color: var(--accent);
-  box-shadow: 0 3px 0 var(--accent);
+.speed-seg .seg {
+  padding: 6px 12px;
+  min-height: 36px;
+}
+
+.speed-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px 0 10px;
 }
 
 .varbar {
@@ -900,6 +912,20 @@ canvas {
   font-size: 0.75em;
 }
 
+/* 誤答のあと、見直す行 */
+.pline.review {
+  background: var(--hl);
+  border-left-color: var(--hl-line);
+  box-shadow: inset 0 0 0 2px var(--hl-line);
+}
+
+.pline.review .ln::before {
+  content: "？";
+  color: var(--hl-line);
+  margin-right: 2px;
+  font-size: 0.8em;
+}
+
 .pline[tabindex] {
   cursor: pointer;
 }
@@ -908,6 +934,7 @@ canvas {
   margin: 4px 0 10px;
   font-weight: 800;
   line-height: 1.7;
+  white-space: pre-line; /* 場合分けの箇条書きを改行して出す */
 }
 
 .choices {
@@ -1010,6 +1037,11 @@ canvas {
 .feedback p {
   margin: 4px 0 0;
   line-height: 1.6;
+}
+
+.feedback .fb-retry {
+  color: var(--muted);
+  font-size: 0.92em;
 }
 
 .fb-icon {
@@ -1399,8 +1431,9 @@ canvas {
     top: var(--topbar-h);
     height: calc(100vh - var(--topbar-h));
     height: calc(100dvh - var(--topbar-h));
-    justify-content: center;
-    padding: 16px;
+    justify-content: flex-start;
+    /* 下端のタスクバー等に変数バーや速度バーがかからないよう、上に寄せて下を空ける */
+    padding: 16px 16px 72px;
   }
 
   .quiz-layout.playing .left-panel {
@@ -1465,6 +1498,7 @@ canvas {
 
   .tut-stage {
     flex-direction: column;
+    justify-content: safe center;
     gap: 10px;
   }
 
@@ -2397,4 +2431,286 @@ canvas {
 .answer-text.is-code,
 .trace-code.is-code {
   font-family: "BIZ UDGothic", "BIZ UDゴシック", "Osaka-mono", "MS Gothic", "Noto Sans Mono CJK JP", "Hiragino Sans", monospace;
+}
+
+/* ---------- メモ（問題画面の右側） ---------- */
+.toggle-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.memo-btn[aria-pressed="true"] {
+  background: #fff8e1;
+  border-color: var(--hl-line);
+}
+
+.memo-panel {
+  background: #fffdf3;
+  border-left: 2px solid var(--line);
+  padding: 14px 14px var(--bottom-safe);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.memo-panel[hidden] {
+  display: none;
+}
+
+.memo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.memo-sub {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #3b4b63;
+}
+
+.memo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memo-name {
+  flex: none;
+  min-width: 3.2em;
+  padding-right: 0;
+}
+
+.memo-name b {
+  margin-right: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.memo-input,
+.memo-free {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-weight: 700;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.memo-input:focus,
+.memo-free:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.memo-free {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.memo-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (min-width: 900px) {
+  /* PC：メモを開くと 3列（フィールド｜処理と問題｜メモ） */
+  .quiz-layout.memo-open {
+    grid-template-columns: 1fr 1fr minmax(240px, 300px);
+  }
+
+  .memo-panel {
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
+    height: calc(100dvh - var(--topbar-h));
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 899px) {
+  /* スマホ：右から出るパネル */
+  .memo-panel {
+    position: fixed;
+    top: var(--topbar-h);
+    right: 0;
+    bottom: 0;
+    width: min(320px, 88vw);
+    z-index: 30;
+    overflow-y: auto;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* ---------- ここまで 進める ---------- */
+.peek-tip {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.program .pline[tabindex]:not(.hl):not(.review):hover {
+  background: #eef4ff;
+}
+
+.program .pline[tabindex]:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+}
+
+.quiz-layout.playing .pline[tabindex] {
+  cursor: default;
+}
+
+.peek-sels {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.peek-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.peek-sel {
+  font: inherit;
+  font-weight: 800;
+  padding: 6px 10px;
+  border: 2px solid #9fb3d1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.peek-cost {
+  margin: 10px 0 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ---------- あそびかた：追加のデモ ---------- */
+.tut-code.review {
+  background: var(--hl);
+  border-color: var(--hl-line);
+  box-shadow: inset 0 0 0 2px var(--hl-line);
+}
+
+.tut-memo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: #fffdf3;
+  max-width: 320px;
+}
+
+.tut-input {
+  flex: 1;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 3px 8px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.tut-input.free {
+  min-height: 2.6em;
+}
+
+.tut-rest {
+  visibility: hidden;
+}
+
+/* ---------- 穴埋めの空欄 ---------- */
+.blank {
+  display: inline-block;
+  min-width: 2.4em;
+  margin: 0 2px;
+  padding: 0 6px;
+  border: 2px solid #7e57c2;
+  border-radius: 6px;
+  background: #f3e5f5;
+  color: #5e35b1;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.blank.filled {
+  border-color: #2e7d32;
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.blank.filled.wrong {
+  border-color: #c62828;
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+/* 穴埋めの誤答：目的と結果の比べ表 */
+.goal-compare {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  margin: 8px 0 4px;
+  align-items: center;
+}
+
+.goal-compare .gc-label {
+  font-weight: 900;
+  color: #3b4b63;
+  font-size: 0.9em;
+}
+
+.goal-compare .gc-vals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.var-inline.ng {
+  border-color: #c62828;
+  background: #ffebee;
+}
+
+.var-inline.ng::after {
+  content: "✕";
+  color: #c62828;
+  margin-left: 4px;
+  font-weight: 900;
+}
+
+/* 空欄が2つの穴埋めの選択肢：a・b を縦に並べる */
+.blank-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.blank-line {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.blank-key {
+  flex: none;
+  color: #5e35b1;
 }

@@ -1,9 +1,9 @@
-// エリア画面：1つのジャンルの風景に Lv1〜Lv5 の地点を置く。
+// エリア画面：1つのジャンルの風景に Lv1〜Lv10 の地点を置く（6〜10 は穴埋め）。
 // 地点を選ぶとアルゴくんが道を歩いてそこへ行き、下にステージの詳しい情報と「挑戦する」が出る。
 import * as state from "../state.js";
 import { show } from "../router.js";
 import { h, coinBadge, starsText } from "../ui.js";
-import { GENRES, LEVELS, genreOf } from "../data/genres.js";
+import { GENRES, LEVELS, MAX_STARS, genreOf, difficulty } from "../data/genres.js";
 import { stageFor } from "../data/stages/index.js";
 import { sceneLayout, drawScene } from "../engine/mapArt.js";
 import { genreProgress } from "./stageList.js";
@@ -145,7 +145,7 @@ function openPanel(j) {
       "div.sp-head",
       {},
       h("span.lv-badge", {}, `Lv${inf.lv.level}`),
-      h("span.sp-diff", { title: "むずかしさ" }, `${"★".repeat(inf.lv.level)}${"☆".repeat(5 - inf.lv.level)} ${inf.lv.name}`),
+      h("span.sp-diff", { title: "むずかしさ" }, `${"★".repeat(difficulty(inf.lv.level))}${"☆".repeat(5 - difficulty(inf.lv.level))} ${inf.lv.name}`),
       h("span.sp-status", {}, h("span", { "aria-hidden": "true" }, inf.icon + " "), inf.status)
     ),
     h("h2.sp-title", {}, inf.stage ? inf.stage.title : "じゅんびちゅう"),
@@ -213,7 +213,7 @@ export default {
         h(
           "div.topbar-right",
           {},
-          h("span.area-stars", { title: "このエリアの星" }, `★${prog.stars}/15`),
+          h("span.area-stars", { title: "このエリアの星" }, `★${prog.stars}/${MAX_STARS}`),
           a.badge,
           h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "area", backParams: { genre: g.key } }), "aria-label": "せってい" }, "⚙")
         )

@@ -6,14 +6,14 @@ import { FieldView } from "../engine/field.js";
 import { Runner } from "../engine/runner.js";
 import { VarBar } from "../engine/varbar.js";
 import { getStage, stageFor } from "../data/stages/index.js";
-import { genreOf } from "../data/genres.js";
-import { codeView, viewToggle, programPanel, speedBar, coloredState, stageLabel, notesBox } from "./common.js";
+import { genreOf, MAX_LEVEL } from "../data/genres.js";
+import { codeView, viewToggle, programPanel, speedBar, coloredState, stageLabel, notesBox, filledLine, choiceContent } from "./common.js";
 
 let x = null;
 
 function fieldMaxHeight() {
   if (window.matchMedia("(max-width: 899px)").matches) return window.innerHeight * 0.4;
-  return Math.max(200, window.innerHeight - 64 - 110);
+  return Math.max(200, window.innerHeight - 250);
 }
 
 function showFinal() {
@@ -44,10 +44,10 @@ async function replay() {
 function renderTexts() {
   const view = codeView();
   const correct = x.stage.choices.find((c) => c.correct);
-  x.answerEl.textContent = correct[view];
+  x.answerEl.replaceChildren(choiceContent(x.stage, correct, view));
   x.answerEl.classList.toggle("is-code", view === "code");
   x.traceRows.forEach(({ cell, line }) => {
-    cell.textContent = x.stage.program[view][line - 1].trim();
+    cell.textContent = filledLine(x.stage, view, line, correct);
     cell.classList.toggle("is-code", view === "code");
   });
 }
@@ -80,10 +80,10 @@ export default {
     x.replayBtn = h("button.btn.primary.replay-btn", { type: "button", onclick: () => replay() }, "▶ もう一度 実演を見る");
     // 実演が終わったあとの盤面は動かないので、ボタンはフィールドの真ん中に重ねる
     const stageBox = h("div.field-stage", {}, host, h("div.replay-overlay", {}, x.replayBtn));
-    x.left = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, stageBox, x.speed.el), vbEl);
+    x.left = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, vbEl, stageBox, x.speed.el));
 
     // 右
-    x.program = programPanel(stage, { onLineClick: (n) => x.program.highlight(n) });
+    x.program = programPanel(stage, { onLineClick: (n) => x.program.highlight(n), fill: stage.choices.find((c) => c.correct) });
     const toggle = viewToggle((v) => {
       x.program.setView(v);
       renderTexts();
@@ -120,7 +120,7 @@ export default {
     const next = stageFor(stage.genre, stage.level + 1);
     const nextBtn = next
       ? h("button.btn.primary", { type: "button", onclick: () => state.isUnlocked(next.genre, next.level) ? show("quiz", { id: next.id }) : show("area", { genre: next.genre, focus: next.id }) }, "次のステージへ ▶")
-      : h("button.btn", { type: "button", disabled: true, title: "つぎの ステージは じゅんびちゅう" }, stage.level < 5 ? "次のステージは じゅんびちゅう" : "このジャンルは ぜんぶ クリア！");
+      : h("button.btn", { type: "button", disabled: true, title: "つぎの ステージは じゅんびちゅう" }, stage.level < MAX_LEVEL ? "次のステージは じゅんびちゅう" : "このジャンルは ぜんぶ クリア！");
     x.codeSection = h("section.ex-sec", {}, h("h3.sec-title", {}, "疑似コード"), h("div.toggle-row", {}, toggle.el), x.program.el, notesBox(stage));
     const right = h(
       "section.right-panel.explain",

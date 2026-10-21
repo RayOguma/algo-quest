@@ -17,7 +17,21 @@ export const LEVELS = [
   { level: 3, name: "ふつう", color: "#FBC02D" },
   { level: 4, name: "ややむずかしい", color: "#FB8C00" },
   { level: 5, name: "むずかしい", color: "#E53935" },
+  // 6〜10：穴埋め（科目Bの「空欄に入れる正しい答えはどれか」の形）。むずかしさは 1〜5 と同じ段階
+  { level: 6, name: "あなうめ 入門", color: "#43A047", blank: true },
+  { level: 7, name: "あなうめ かんたん", color: "#29B6F6", blank: true },
+  { level: 8, name: "あなうめ ふつう", color: "#FBC02D", blank: true },
+  { level: 9, name: "あなうめ ややむずかしい", color: "#FB8C00", blank: true },
+  { level: 10, name: "あなうめ むずかしい", color: "#E53935", blank: true },
 ];
+
+export const MAX_LEVEL = LEVELS.length;
+export const MAX_STARS = LEVELS.length * 3;
+
+/** むずかしさの★の数（1〜5。穴埋めも 1〜5 で数える） */
+export function difficulty(level) {
+  return ((level - 1) % 5) + 1;
+}
 
 export function genreOf(key) {
   return GENRES.find((g) => g.key === key);

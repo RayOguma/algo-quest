@@ -352,11 +352,84 @@ export class World {
   }
 }
 
-/** 選択肢が再生するイベント列（正解で events 省略時は stage.events + success） */
+/** 穴埋めの空欄（例「［a］」）。処理の行の中に書く */
+export const BLANK_RE = /［([a-z])］/g;
+
+/** 空欄がある行の番号（疑似コードで判定） */
+export function blankLines(stage) {
+  const out = [];
+  stage.program.code.forEach((l, i) => {
+    if (/［[a-z]］/.test(l)) out.push(i + 1);
+  });
+  return out;
+}
+
+/** 空欄の行が初めて実行される line イベントの番号（なければ -1）。誤答と「ここまで 進める」はここで止める */
+export function blankStopIndex(stage) {
+  const lines = blankLines(stage);
+  return stage.events.findIndex((e) => e.type === "line" && lines.includes(e.n));
+}
+
+/**
+ * 誤答で止める位置：stage.events の中で、choice.stop.line の nth 回目（既定 1）の line イベントの番号。
+ * 穴埋めで stop を書かないときは、空欄の行の手前。見つからなければ -1。
+ */
+export function stopIndex(stage, choice) {
+  const st = choice.stop;
+  if (!st) return stage.blanks ? blankStopIndex(stage) : -1;
+  let seen = 0;
+  for (let i = 0; i < stage.events.length; i++) {
+    const ev = stage.events[i];
+    if (ev.type === "line" && ev.n === st.line && ++seen === (st.nth || 1)) return i;
+  }
+  return -1;
+}
+
+/** 誤答で黄色く示す行（stop.mark があればそれ、なければ止めた行。穴埋めで stop がなければ空欄の行） */
+export function reviewLines(choice, stage) {
+  const st = choice.stop || {};
+  if (!choice.stop && stage && stage.blanks) return blankLines(stage);
+  return st.mark || (st.line ? [st.line] : []);
+}
+
+/** 穴埋めの選択肢が空欄に入れるもの：fill.a は "y" か { code: "y", ja: "y の値" } */
+export function fillText(choice, key, view) {
+  const f = choice.fill && choice.fill[key];
+  if (f === undefined) return null;
+  return typeof f === "string" ? f : f[view] ?? f.code;
+}
+
+/**
+ * 選択肢が再生するイベント列。
+ * 正解：stage.events + success。
+ * 穴埋めの誤答：その選択肢を空欄に入れたプログラムを実行する（choice.events）。最後は「目的と合わない」失敗。
+ *   途中で実行できなくなる選択肢（まだ値が入っていない変数を使う など）は、choice.events を fail で終える。
+ * 追跡の誤答：正しい処理を、読みがずれる行（stop）の手前まで再生して止める（読みまちがいの処理は見せない）。
+ */
 export function eventsForChoice(stage, choice) {
-  if (choice.events) return choice.events;
   if (choice.correct) return [...stage.events, { type: "success" }];
-  return [];
+  if (stage.blanks && choice.events) {
+    const last = choice.events[choice.events.length - 1];
+    if (last && last.type === "fail") return choice.events;
+    return [...choice.events, { type: "fail", kind: "mismatch", reason: "もくてきと ちがう けっかに なった…" }];
+  }
+  const i = stopIndex(stage, choice);
+  if (i < 0) return [];
+  return [...stage.events.slice(0, i), { type: "fail", kind: "review", reason: "ここを よく 見てみよう" }];
+}
+
+/**
+ * 目的（expectedFinal）と結果の比べ表。[{ name, want, got, ok }]（配列は "[1, 2]" の文字列で比べる）
+ */
+export function compareWithGoal(snapshot, expected) {
+  const out = [];
+  const fmt = (v) => (v === undefined || v === null ? "？" : Array.isArray(v) ? `{${v.join(", ")}}` : String(v));
+  for (const [k, v] of Object.entries(expected.vars || {})) out.push({ name: k, want: fmt(v), got: fmt(snapshot.vars[k]), ok: snapshot.vars[k] === v });
+  for (const [k, v] of Object.entries(expected.arrays || {})) {
+    const g = snapshot.arrays[k];
+    out.push({ name: k, want: fmt(v), got: fmt(g), ok: !!g && g.length === v.length && g.every((x, i) => x === v[i]) });
+  }
+  return out;
 }
 
 /** expectedFinal に書かれた項目だけを比較 */
