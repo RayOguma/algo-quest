@@ -58,11 +58,11 @@ async function loginBonus() {
     {},
     h("p.result-coins", {}, h("span.coin-icon"), ` +${r.amount} コイン`),
     r.first
-      ? h("p", {}, "はじめての ログイン ボーナス！ ヒントや「ここまで すすめる」に つかえるよ。")
-      : h("p", {}, `${r.streak}日 れんぞく ログイン！ ${r.streak < state.DAILY_BONUS.length ? "あしたも くると ふえるよ。" : "まいにち さいだいの ボーナスだよ。"}`),
-    h("p.muted", {}, `いまの コイン：${state.coins()}`)
+      ? h("p", {}, "初めてのログインボーナス！ヒントや「ここまで進める」に使えるよ。")
+      : h("p", {}, `${r.streak}日連続ログイン！ ${r.streak < state.DAILY_BONUS.length ? "明日も来ると増えるよ。" : "毎日最大のボーナスだよ。"}`),
+    h("p.muted", {}, `今のコイン：${state.coins()}`)
   );
-  await modal({ title: r.first ? "🎁 ようこそ！" : "🎁 ログイン ボーナス", body });
+  await modal({ title: r.first ? "🎁 ようこそ！" : "🎁 ログインボーナス", body });
 }
 loginBonus();
 document.addEventListener("visibilitychange", () => {

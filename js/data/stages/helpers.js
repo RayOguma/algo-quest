@@ -17,8 +17,8 @@ export const emote = (name) => ({ type: "emote", name });
 export const wait = (ms) => ({ type: "wait", ms });
 export const end = () => ({ type: "end" });
 
-export const mismatch = (reason = "あれ？ けんざんが あわない…") => ({ type: "fail", kind: "mismatch", reason });
-export const lockFail = (box, reason = "ロックが あかない…") => ({ type: "fail", kind: "lock", box, reason });
+export const mismatch = (reason = "あれ？検算が合わない…") => ({ type: "fail", kind: "mismatch", reason });
+export const lockFail = (box, reason = "ロックが開かない…") => ({ type: "fail", kind: "lock", box, reason });
 
 /**
  * 「アルゴくんが値を運ぶ」イベント列を作る道具（ステージごとに1つ作る）。

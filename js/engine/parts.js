@@ -208,7 +208,7 @@ export function drawPad(ctx, cx, cy, T, kind, lamp) {
   ctx.fill();
   // 記号
   ctx.fillStyle = shade(base, -0.6);
-  const label = kind === "compare" ? "くらべる" : "けいさん";
+  const label = kind === "compare" ? "比べる" : "計算";
   fitText(ctx, label, w * 0.9, Math.round(T * 0.14));
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

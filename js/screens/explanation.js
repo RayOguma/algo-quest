@@ -67,8 +67,8 @@ export default {
     const header = h(
       "header.topbar",
       {},
-      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }) }, "← もどる"),
-      h("h1.topbar-title", {}, `かいせつ ${stageLabel(stage, genre)}`),
+      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }) }, "← 戻る"),
+      h("h1.topbar-title", {}, `解説 ${stageLabel(stage, genre)}`),
       h("div.topbar-right", {}, badge)
     );
 
@@ -77,7 +77,7 @@ export default {
     x.speed = speedBar(() => x && x.runner);
     const vbEl = h("div.varbar");
     const vb = new VarBar(vbEl);
-    x.replayBtn = h("button.btn.primary.replay-btn", { type: "button", onclick: () => replay() }, "▶ もう一度 実演を見る");
+    x.replayBtn = h("button.btn.primary.replay-btn", { type: "button", onclick: () => replay() }, "▶ もう一度実演を見る");
     // 実演が終わったあとの盤面は動かないので、ボタンはフィールドの真ん中に重ねる
     const stageBox = h("div.field-stage", {}, host, h("div.replay-overlay", {}, x.replayBtn));
     x.left = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, vbEl, stageBox, x.speed.el));
@@ -96,7 +96,7 @@ export default {
       const cell = h("td.trace-code");
       const tr = h(
         "tr",
-        { tabindex: "0", title: "タップすると 疑似コードの 行が 光ります" },
+        { tabindex: "0", title: "タップすると疑似コードの行が光ります" },
         h("td.trace-ln", {}, `${t.line}行目`),
         cell,
         h("td.trace-state", {}, coloredState(stage, t.state))
@@ -120,12 +120,12 @@ export default {
     const next = stageFor(stage.genre, stage.level + 1);
     const nextBtn = next
       ? h("button.btn.primary", { type: "button", onclick: () => state.isUnlocked(next.genre, next.level) ? show("quiz", { id: next.id }) : show("area", { genre: next.genre, focus: next.id }) }, "次のステージへ ▶")
-      : h("button.btn", { type: "button", disabled: true, title: "つぎの ステージは じゅんびちゅう" }, stage.level < MAX_LEVEL ? "次のステージは じゅんびちゅう" : "このジャンルは ぜんぶ クリア！");
+      : h("button.btn", { type: "button", disabled: true, title: "次のステージは準備中" }, stage.level < MAX_LEVEL ? "次のステージは準備中" : "このジャンルは全部クリア！");
     x.codeSection = h("section.ex-sec", {}, h("h3.sec-title", {}, "疑似コード"), h("div.toggle-row", {}, toggle.el), x.program.el, notesBox(stage));
     const right = h(
       "section.right-panel.explain",
-      { "aria-label": "かいせつ" },
-      h("section.ex-sec.ex-answer", {}, h("h3.sec-title", {}, "⭕ せいかい"), h("p", {}, x.answerEl), h("p.why", {}, stage.explanation.why)),
+      { "aria-label": "解説" },
+      h("section.ex-sec.ex-answer", {}, h("h3.sec-title", {}, "⭕ 正解"), h("p", {}, x.answerEl), h("p.why", {}, stage.explanation.why)),
       h(
         "section.ex-sec",
         {},
@@ -142,7 +142,7 @@ export default {
         "div.ex-actions",
         {},
         nextBtn,
-        h("button.btn", { type: "button", onclick: () => show("quiz", { id: stage.id }) }, "もう一度 とく"),
+        h("button.btn", { type: "button", onclick: () => show("quiz", { id: stage.id }) }, "もう一度解く"),
         h("button.btn", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }) }, "一覧へ")
       )
     );

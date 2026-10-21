@@ -97,7 +97,7 @@ export function totalSteps(stage) {
 
 /** くりかえしの見出し（例：「i の値」「くりかえし（while）」） */
 export function loopLabel(loop) {
-  return loop.kind === "for" ? `${loop.var} の値` : `${loop.start}行目の くりかえし`;
+  return loop.kind === "for" ? `${loop.var} の値` : `${loop.start}行目の繰り返し`;
 }
 
 export function keyText(loop, v) {

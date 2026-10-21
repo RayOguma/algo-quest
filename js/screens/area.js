@@ -19,7 +19,7 @@ function info(g, lv) {
   const ready = !!stage;
   let status;
   let icon;
-  if (!ready) [status, icon] = ["じゅんびちゅう", "🚧"];
+  if (!ready) [status, icon] = ["準備中", "🚧"];
   else if (!unlocked) [status, icon] = ["ロック中", "🔒"];
   else if (rec.cleared) [status, icon] = ["クリア済", "✔"];
   else [status, icon] = ["挑戦できる", "▶"];
@@ -92,7 +92,7 @@ function buildScene() {
         type: "button",
         style: { left: a.points[j].x + "px", top: a.points[j].y + "px", "--lv": inf.lv.color },
         "aria-label": inf.label,
-        title: inf.stage ? `Lv${inf.lv.level} ${inf.stage.title}` : `Lv${inf.lv.level} じゅんびちゅう`,
+        title: inf.stage ? `Lv${inf.lv.level} ${inf.stage.title}` : `Lv${inf.lv.level} 準備中`,
       },
       h("span.mn-lv", {}, inf.ready && !inf.unlocked ? "🔒" : String(inf.lv.level)),
       inf.ready ? h("span.mn-stars", { "aria-hidden": "true" }, starsText(inf.rec.stars || 0)) : null
@@ -133,32 +133,32 @@ function openPanel(j) {
   p.innerHTML = "";
   p.style.setProperty("--lv", inf.lv.color);
   let note = null;
-  if (!inf.ready) note = "このステージは じゅんびちゅう です。もうすこし まってね。";
-  else if (!inf.unlocked) note = `Lv${inf.lv.level - 1} を クリアすると ちょうせん できます。`;
+  if (!inf.ready) note = "このステージは準備中です。もう少し待ってね。";
+  else if (!inf.unlocked) note = `Lv${inf.lv.level - 1} をクリアすると挑戦できます。`;
   const goBtn = h(
     "button.btn.primary.big",
     { type: "button", disabled: !inf.ready || !inf.unlocked, onclick: () => show("quiz", { id: inf.id }) },
-    inf.rec.cleared ? "もう一度 挑戦する ▶" : "挑戦する ▶"
+    inf.rec.cleared ? "もう一度挑戦する ▶" : "挑戦する ▶"
   );
   const parts = [
     h(
       "div.sp-head",
       {},
       h("span.lv-badge", {}, `Lv${inf.lv.level}`),
-      h("span.sp-diff", { title: "むずかしさ" }, `${"★".repeat(difficulty(inf.lv.level))}${"☆".repeat(5 - difficulty(inf.lv.level))} ${inf.lv.name}`),
+      h("span.sp-diff", { title: "難しさ" }, `${"★".repeat(difficulty(inf.lv.level))}${"☆".repeat(5 - difficulty(inf.lv.level))} ${inf.lv.name}`),
       h("span.sp-status", {}, h("span", { "aria-hidden": "true" }, inf.icon + " "), inf.status)
     ),
-    h("h2.sp-title", {}, inf.stage ? inf.stage.title : "じゅんびちゅう"),
+    h("h2.sp-title", {}, inf.stage ? inf.stage.title : "準備中"),
     inf.ready
       ? h(
           "p.sp-meta",
           {},
           h("span.sp-stars", { "aria-label": `星 ${inf.rec.stars || 0}` }, starsText(inf.rec.stars || 0)),
-          inf.rec.cleared ? "　さいこう記録" : "　まだ クリアしていません"
+          inf.rec.cleared ? "　最高記録" : "　まだクリアしていません"
         )
       : null,
     note ? h("p.sp-note", {}, note) : null,
-    h("div.sp-actions", {}, h("button.btn", { type: "button", onclick: () => closePanel(true) }, "もどる"), goBtn),
+    h("div.sp-actions", {}, h("button.btn", { type: "button", onclick: () => closePanel(true) }, "戻る"), goBtn),
   ];
   p.append(...parts.filter(Boolean));
   p.hidden = false;
@@ -208,19 +208,19 @@ export default {
       h(
         "header.topbar",
         {},
-        h("button.btn.small", { type: "button", onclick: () => show("stages", { genre: g.key }), "aria-label": "ワールドマップへ もどる" }, "← マップ"),
+        h("button.btn.small", { type: "button", onclick: () => show("stages", { genre: g.key }), "aria-label": "ワールドマップへ戻る" }, "← マップ"),
         h("h1.topbar-title", {}, `${g.num} ${g.place}`),
         h(
           "div.topbar-right",
           {},
           h("span.area-stars", { title: "このエリアの星" }, `★${prog.stars}/${MAX_STARS}`),
           a.badge,
-          h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "area", backParams: { genre: g.key } }), "aria-label": "せってい" }, "⚙")
+          h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "area", backParams: { genre: g.key } }), "aria-label": "設定" }, "⚙")
         )
       )
     );
     a.sceneWrap = h("div.scene-wrap");
-    a.panel = h("section.stage-panel", { hidden: true, "aria-live": "polite", "aria-label": "ステージの じょうほう" });
+    a.panel = h("section.stage-panel", { hidden: true, "aria-live": "polite", "aria-label": "ステージの情報" });
     el.append(h("main.area-main", {}, a.sceneWrap));
     buildScene();
     a.onResize = () => {

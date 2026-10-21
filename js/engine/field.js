@@ -39,7 +39,7 @@ export class FieldView {
     this.canvas = document.createElement("canvas");
     this.canvas.className = "field-canvas";
     this.canvas.setAttribute("role", "img");
-    this.canvas.setAttribute("aria-label", "フィールド（アルゴくんが うごく ばしょ）");
+    this.canvas.setAttribute("aria-label", "フィールド（アルゴくんが動く場所）");
     host.appendChild(this.canvas);
     this.ctx = this.canvas.getContext("2d");
     this.particles = new Particles();

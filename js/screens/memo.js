@@ -26,7 +26,7 @@ export function memoPanel(stage, hooks = {}) {
       id,
       value: m.vars[name] || "",
       autocomplete: "off",
-      placeholder: "れい：3 → 5 → 4",
+      placeholder: "例：3 → 5 → 4",
     });
     input.addEventListener("input", () => {
       m.vars[name] = input.value;
@@ -35,13 +35,13 @@ export function memoPanel(stage, hooks = {}) {
     inputs.push(input);
     return h("div.memo-row", {}, h("label.var-inline.memo-name", { for: id, style: { "--c": colorFor(stage, name) } }, h("b", {}, name)), input);
   });
-  const free = h("textarea.memo-free", { id: "memo-free", rows: 6, placeholder: "気づいたことや 計算を 自由に 書こう" });
+  const free = h("textarea.memo-free", { id: "memo-free", rows: 6, placeholder: "気づいたことや計算を自由に書こう" });
   free.value = m.free;
   free.addEventListener("input", () => {
     m.free = free.value;
     save();
   });
-  const clearBtn = h("button.btn.small", { type: "button" }, "ぜんぶ けす");
+  const clearBtn = h("button.btn.small", { type: "button" }, "全部消す");
   clearBtn.addEventListener("click", () => {
     inputs.forEach((i) => (i.value = ""));
     free.value = "";
@@ -49,16 +49,16 @@ export function memoPanel(stage, hooks = {}) {
     m.free = "";
     save();
   });
-  const closeBtn = h("button.btn.small.memo-close", { type: "button", "aria-label": "メモを とじる" }, "✕ とじる");
+  const closeBtn = h("button.btn.small.memo-close", { type: "button", "aria-label": "メモを閉じる" }, "✕ 閉じる");
   const el = h(
     "aside.memo-panel",
     { "aria-label": "メモ", hidden: true },
     h("div.memo-head", {}, h("b", {}, "📝 メモ"), closeBtn),
-    rows.length ? h("p.memo-sub", {}, "変数の 値") : null,
+    rows.length ? h("p.memo-sub", {}, "変数の値") : null,
     ...rows,
-    h("label.memo-sub", { for: "memo-free" }, "じゆう メモ"),
+    h("label.memo-sub", { for: "memo-free" }, "自由メモ"),
     free,
-    h("div.memo-foot", {}, h("small.muted", {}, "メモは この問題ごとに 保存されます"), clearBtn)
+    h("div.memo-foot", {}, h("small.muted", {}, "メモはこの問題ごとに保存されます"), clearBtn)
   );
   const button = h("button.btn.small.memo-btn", { type: "button", "aria-pressed": "false", "aria-controls": "memo-panel", title: "Mキー" }, "📝 メモ");
   el.id = "memo-panel";

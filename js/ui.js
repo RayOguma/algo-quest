@@ -106,8 +106,8 @@ export function showOX(ok) {
   const reduce = !!state.settings().reduceMotion;
   ov.className = `ox-overlay ${ok ? "is-ok" : "is-ng"}${reduce ? " reduce" : ""}`;
   ov.innerHTML = ok
-    ? `<svg viewBox="0 0 200 200" class="ox-mark" role="img" aria-label="せいかい"><circle cx="100" cy="100" r="70" pathLength="100"/></svg>`
-    : `<svg viewBox="0 0 200 200" class="ox-mark" role="img" aria-label="ふせいかい"><path d="M45 45 L155 155" pathLength="100"/><path d="M155 45 L45 155" pathLength="100" class="second"/></svg>`;
+    ? `<svg viewBox="0 0 200 200" class="ox-mark" role="img" aria-label="正解"><circle cx="100" cy="100" r="70" pathLength="100"/></svg>`
+    : `<svg viewBox="0 0 200 200" class="ox-mark" role="img" aria-label="不正解"><path d="M45 45 L155 155" pathLength="100"/><path d="M155 45 L45 155" pathLength="100" class="second"/></svg>`;
   ov.hidden = false;
   playSE(ok ? "correct" : "wrong");
   return new Promise((resolve) => {

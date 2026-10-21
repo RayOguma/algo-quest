@@ -34,12 +34,12 @@ function buildDemo(kind) {
   box.dataset.kind = kind;
   if (kind === "choices") {
     box.append(
-      h("p.tut-mini-q", {}, "x の あたいは いくつ？"),
+      h("p.tut-mini-q", {}, "x の値はいくつ？"),
       h("div.tut-choices", {}, ...["A. 3", "B. 4", "C. 5", "D. 7"].map((t, i) => h(`span.tut-choice${i === 1 ? ".pick" : ""}`, {}, t)))
     );
   } else if (kind === "layout") {
-    const left = h("div.tut-pane.left", {}, h("b", {}, "フィールド"), h("small", {}, "アルゴくんが うごく"));
-    const right = h("div.tut-pane.right", {}, h("b", {}, "しょり と こたえ"), h("small", {}, "よんで えらぶ"));
+    const left = h("div.tut-pane.left", {}, h("b", {}, "フィールド"), h("small", {}, "アルゴくんが動く"));
+    const right = h("div.tut-pane.right", {}, h("b", {}, "処理と答え"), h("small", {}, "読んで選ぶ"));
     box.append(h("div.tut-layout", {}, left, right));
     let i = 0;
     const tick = () => {
@@ -81,16 +81,16 @@ function buildDemo(kind) {
     }, 1800);
   } else if (kind === "speed") {
     box.append(
-      h("div.tut-ox", {}, h("span.ox-o", { "aria-label": "せいかい" }, "○"), h("span.ox-x", { "aria-label": "ふせいかい" }, "×")),
+      h("div.tut-ox", {}, h("span.ox-o", { "aria-label": "正解" }, "○"), h("span.ox-x", { "aria-label": "不正解" }, "×")),
       h("div.tut-code.review", {}, h("span.ln", {}, "？4"), h("code", {}, "x ← y － 1")),
       h("div.tut-speed.spot", {}, h("span.fake-btn", {}, "⏩ 1倍｜2倍｜4倍"), h("span.fake-btn", {}, "⏭ スキップ")),
-      h("small", {}, "じつえん ちゅうは フィールドの したに でるよ")
+      h("small", {}, "実演中はフィールドの下に出るよ")
     );
   } else if (kind === "peek") {
-    const lines = ["for (i を 1 から 3 まで …)", "  sum ← sum ＋ i", "endfor"].map((t, i) =>
+    const lines = ["for (i を 1 から 3 まで…)", "  sum ← sum ＋ i", "endfor"].map((t, i) =>
       h(`div.tut-code${i === 1 ? ".hl" : ""}`, {}, h("span.ln", {}, String(i + 3)), h("code", {}, t))
     );
-    box.append(...lines, h("div.tut-coins", {}, h("span.fake-btn", {}, "▶ 4行目まで 進める"), h("span", {}, "i = 2 の ところまで"), h("span.coin-icon"), h("b", {}, "8")));
+    box.append(...lines, h("div.tut-coins", {}, h("span.fake-btn", {}, "▶ 4行目まで進める"), h("span", {}, "i = 2 のところまで"), h("span.coin-icon"), h("b", {}, "8")));
   } else if (kind === "memo") {
     box.append(
       h(
@@ -99,7 +99,7 @@ function buildDemo(kind) {
         h("b", {}, "📝 メモ"),
         h("div.memo-row", {}, h("span.var-inline", { style: { "--c": "#4FC3F7" } }, h("b", {}, "x")), h("span.tut-input", {}, "3 → 4")),
         h("div.memo-row", {}, h("span.var-inline", { style: { "--c": "#66BB6A" } }, h("b", {}, "y")), h("span.tut-input", {}, "5")),
-        h("span.tut-input.free", {}, "4行目で x が かわる！")
+        h("span.tut-input.free", {}, "4行目で x が変わる！")
       )
     );
   } else if (kind === "blank") {
@@ -111,9 +111,9 @@ function buildDemo(kind) {
     );
   } else if (kind === "coins") {
     box.append(
-      h("div.tut-coins", {}, h("span.coin-icon"), h("b", {}, "コイン"), h("span", {}, "クリアと ログインボーナスで もらえる")),
-      h("div.tut-coins", {}, h("span.fake-btn", {}, "🎁 はじめての日"), h("b", {}, "+100"), h("span", {}, "つぎの日からも まいにち 10〜50")),
-      h("div.tut-coins", {}, h("span.fake-btn", {}, "💡 ヒント"), h("span", {}, "1つめは むりょう！"))
+      h("div.tut-coins", {}, h("span.coin-icon"), h("b", {}, "コイン"), h("span", {}, "クリアとログインボーナスでもらえる")),
+      h("div.tut-coins", {}, h("span.fake-btn", {}, "🎁 初めての日"), h("b", {}, "+100"), h("span", {}, "次の日からも毎日 10〜50")),
+      h("div.tut-coins", {}, h("span.fake-btn", {}, "💡 ヒント"), h("span", {}, "1つ目は無料！"))
     );
   }
   return box;
@@ -129,17 +129,17 @@ function render() {
   chara.setAttribute("role", "img");
   chara.setAttribute("aria-label", "アルゴくん");
   const text = h("p.tut-text", { "aria-live": "polite" });
-  const bubble = h("div.tut-bubble", { role: "button", tabindex: "0", "aria-label": "つぎへ" }, text);
+  const bubble = h("div.tut-bubble", { role: "button", tabindex: "0", "aria-label": "次へ" }, text);
   const dots = h(
     "div.tut-dots",
     { "aria-label": `${ctx.page + 1} / ${TUTORIAL_PAGES.length} ページ` },
     ...TUTORIAL_PAGES.map((_, i) => h(`span${i === ctx.page ? ".on" : ""}`))
   );
-  const backBtn = h("button.btn", { type: "button", disabled: ctx.page === 0, onclick: () => go(-1) }, "もどる");
+  const backBtn = h("button.btn", { type: "button", disabled: ctx.page === 0, onclick: () => go(-1) }, "戻る");
   const nextBtn = h(
     "button.btn.primary",
     { type: "button", onclick: () => advance() },
-    ctx.page === TUTORIAL_PAGES.length - 1 ? "はじめる！" : "つぎへ"
+    ctx.page === TUTORIAL_PAGES.length - 1 ? "始める！" : "次へ"
   );
   el.append(
     h("button.btn.small.tut-skip", { type: "button", onclick: () => finish() }, "スキップ"),

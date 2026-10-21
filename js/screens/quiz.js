@@ -62,7 +62,7 @@ function renderChoices() {
         role: "radio",
         "aria-checked": String(selected),
         disabled: wrong || q.playing,
-        "aria-label": `${LABELS[i]}. ${c[view]}${wrong ? "（まちがい）" : ""}`,
+        "aria-label": `${LABELS[i]}. ${c[view]}${wrong ? "（間違い）" : ""}`,
         title: `${i + 1}キーで選択`,
       },
       h("span.choice-label", { "aria-hidden": "true" }, LABELS[i]),
@@ -92,11 +92,11 @@ function renderHints() {
   q.hintBtn.append(
     "💡 ヒント",
     opened ? h("span.hint-count", {}, `${opened}/3`) : "",
-    next && next.cost === 0 ? h("span.free-tag", {}, "むりょう") : ""
+    next && next.cost === 0 ? h("span.free-tag", {}, "無料") : ""
   );
   q.hintBtn.setAttribute(
     "aria-label",
-    `ヒント（${opened}こ ひらいています。${next ? `つぎは ${next.cost === 0 ? "むりょう" : next.cost + "コイン"}` : "ぜんぶ ひらいています"}）`
+    `ヒント（${opened}個開いています。${next ? `つぎは ${next.cost === 0 ? "無料" : next.cost + "コイン"}` : "全部開いています"}）`
   );
 }
 
@@ -112,28 +112,28 @@ async function openHint(justOpened = -1) {
   rec.hintsUsed.forEach((u, i) => {
     if (u) list.append(h(`p.hint${i === justOpened ? ".new" : ""}`, {}, h("b", {}, HINT_NAMES[i] + "："), q.stage.hints[i]));
   });
-  if (!list.children.length) list.append(h("p.muted", {}, "まだ ヒントを ひらいていません。"));
+  if (!list.children.length) list.append(h("p.muted", {}, "まだヒントを開いていません。"));
   const body = h("div", {}, list);
   const actions = [];
   if (next) {
-    const costText = next.cost === 0 ? "むりょう" : `${next.cost} コイン`;
+    const costText = next.cost === 0 ? "無料" : `${next.cost} コイン`;
     body.append(
       h(
         "p.muted.hint-next",
         {},
-        `つぎは ヒント${HINT_NAMES[next.idx]}（${costText}）　いまの コイン：${state.coins()}`,
+        `次はヒント${HINT_NAMES[next.idx]}（${costText}）　今のコイン：${state.coins()}`,
         h("br"),
-        "ヒントを つかっても 星や コインは へりません"
+        "ヒントを使っても星やコインは減りません"
       )
     );
-    actions.push({ label: `ヒント${HINT_NAMES[next.idx].slice(0, 1)}を ひらく（${costText}）`, value: "open", primary: true });
+    actions.push({ label: `ヒント${HINT_NAMES[next.idx].slice(0, 1)}を開く（${costText}）`, value: "open", primary: true });
   }
-  actions.push({ label: "とじる", value: null, primary: !next });
+  actions.push({ label: "閉じる", value: null, primary: !next });
   const v = await modal({ title: "💡 ヒント", body, actions });
   if (v !== "open" || !q) return;
   const r = state.buyHint(q.stage.id);
   if (!r.ok && r.reason === "coins") {
-    await modal({ title: "コインが足りません", body: "ステージをクリアすると集まります。ヒントがなくても、なんどでも ちょうせんできるよ。" });
+    await modal({ title: "コインが足りません", body: "ステージをクリアすると集まります。ヒントがなくても、何度でも挑戦できるよ。" });
     return;
   }
   playSE("pickup");
@@ -158,14 +158,14 @@ async function peek(n) {
   const unit = peekUnit(stage, n);
   const all = peekTargets(stage, unit);
   if (!all.length) {
-    toast(`${n}行目は この問題では 実行されません`);
+    toast(`${n}行目はこの問題では実行されません`);
     return;
   }
   // 穴埋め：空欄の行が初めて実行される手前までしか進められない
   const limit = stage.blanks ? blankStopIndex(stage) : Infinity;
   const targets = all.filter((t) => t.stop <= limit);
   if (!targets.length) {
-    toast("空欄の 行から 先は 進められません。空欄より 前の 行を えらんでね", 2600);
+    toast("空欄の行から先は進められません。空欄より前の行を選んでね", 2600);
     return;
   }
   const total = totalSteps(stage);
@@ -187,9 +187,9 @@ async function peek(n) {
     const cost = state.peekCost(stage, t.steps, total);
     costEl.replaceChildren(
       cost === 0
-        ? h("b", {}, state.stageRec(stage.id).cleared ? "むりょう（クリアずみ）" : "むりょう（もう 見た 所まで）")
-        : h("span", {}, h("span.coin-icon"), h("b", {}, ` ${cost} コイン`), " つかいます"),
-      h("small.muted", {}, `　いまの コイン：${state.coins()}`)
+        ? h("b", {}, state.stageRec(stage.id).cleared ? "無料（クリア済み）" : "無料（もう見た所まで）")
+        : h("span", {}, h("span.coin-icon"), h("b", {}, ` ${cost} コイン`), " 使います"),
+      h("small.muted", {}, `　今のコイン：${state.coins()}`)
     );
     return cost;
   };
@@ -205,15 +205,15 @@ async function peek(n) {
   const body = h(
     "div.peek",
     {},
-    h("p", {}, `${range}が 実行し おわる所まで、アルゴくんが 正しい 処理を 実演します。`),
-    unit.kind === "if" ? h("p.muted", {}, "if 文は、分かれ道 ぜんたいを 1つの 処理として 進めます。") : null,
+    h("p", {}, `${range}が実行し終わる所まで、アルゴくんが正しい処理を実演します。`),
+    unit.kind === "if" ? h("p.muted", {}, "if 文は、分かれ道全体を 1つの処理として進めます。") : null,
     sels.length ? h("div.peek-sels", {}, ...sels.map((s, k) => h("label.peek-row", {}, h("span", {}, loopLabel(unit.loops[k]) + "："), s))) : null,
-    sels.length ? h("p.muted", {}, "くりかえしの 何回目（変数が いくつの とき）まで 進めるかを えらべます。") : null,
+    sels.length ? h("p.muted", {}, "繰り返しの何回目（変数がいくつのとき）まで進めるかを選べます。") : null,
     costEl,
-    h("p.muted", {}, "コインは 実行する 行の 数に おうじて きまります。一度 見た 所までは 何度でも むりょう です。")
+    h("p.muted", {}, "コインは実行する行の数に応じて決まります。一度見た所までは何度でも無料です。")
   );
   const v = await modal({
-    title: `▶ ${range}まで 進める`,
+    title: `▶ ${range}まで進める`,
     body,
     actions: [
       { label: "やめる", value: null },
@@ -224,7 +224,7 @@ async function peek(n) {
   const t = pick();
   const r = state.buyPeek(stage, t.steps, total);
   if (!r.ok) {
-    await modal({ title: "コインが 足りません", body: `あと ${r.need - state.coins()} コイン ひつようです。ヒントや、もっと 手前の 行なら 少ない コインで 見られます。` });
+    await modal({ title: "コインが足りません", body: `あと ${r.need - state.coins()} コイン必要です。ヒントや、もっと手前の行なら少ないコインで見られます。` });
     return;
   }
   q.feedback.hidden = true;
@@ -236,7 +236,7 @@ async function peek(n) {
   if (!q || res.aborted) return;
   setPlaying(false);
   q.program.review(unit.kind === "if" ? range2(unit.start, unit.end) : [n]);
-  toast("ここまで 進めました。こたえると はじめから 実演します", 2600);
+  toast("ここまで進めました。答えると最初から実演します", 2600);
 }
 
 /** 追跡の誤答：正しい処理を手前で止めた所から、黄色の行を見直してもらう */
@@ -244,9 +244,9 @@ function traceFeedback(choice, lines) {
   return h(
     "div",
     {},
-    h("b", {}, `ざんねん！ 黄色の ${lineRange(lines)}を 見直してみよう`),
-    h("p", {}, choice.wrongFeedback || "もう一度 処理を たどってみよう。"),
-    h("p.fb-retry", {}, "左の フィールドは、その手前まで 正しく 実行した ようすです。黄色の 行で 何が おきるか、もう一度 考えてみよう。")
+    h("b", {}, `残念！黄色の ${lineRange(lines)}を見直してみよう`),
+    h("p", {}, choice.wrongFeedback || "もう一度処理をたどってみよう。"),
+    h("p.fb-retry", {}, "左のフィールドは、その手前まで正しく実行した様子です。黄色の行で何が起きるか、もう一度考えてみよう。")
   );
 }
 
@@ -258,11 +258,11 @@ function blankFeedback(choice, r) {
   const chip = (name, val, ng) => h(`span.var-inline${ng ? ".ng" : ""}`, { style: { "--c": colorFor(stage, name) } }, h("b", {}, name), `=${val}`);
   const parts = [];
   if (r.failInfo && r.failInfo.kind !== "mismatch") {
-    parts.push(h("b", {}, `ざんねん！ ${put} を 入れると、とちゅうで 実行できなく なりました`), h("p", {}, `とまった りゆう：${r.failInfo.reason}`));
+    parts.push(h("b", {}, `残念！ ${put} を入れると、途中で実行できなくなりました`), h("p", {}, `止まった理由：${r.failInfo.reason}`));
   } else {
     const rows = compareWithGoal(q.view.world.snapshot(), stage.expectedFinal);
     parts.push(
-      h("b", {}, `ざんねん！ ${put} を 入れると、目的と ちがう 結果に なりました`),
+      h("b", {}, `残念！ ${put} を入れると、目的と違う結果になりました`),
       h(
         "div.goal-compare",
         {},
@@ -274,8 +274,8 @@ function blankFeedback(choice, r) {
     );
   }
   parts.push(
-    h("p", {}, choice.wrongFeedback || "もう一度 処理を たどってみよう。"),
-    h("p.fb-retry", {}, "黄色の 空欄に 何を 入れれば 目的どおりに なるか、もう一度 考えてみよう。")
+    h("p", {}, choice.wrongFeedback || "もう一度処理をたどってみよう。"),
+    h("p.fb-retry", {}, "黄色の空欄に何を入れれば目的どおりになるか、もう一度考えてみよう。")
   );
   return h("div", {}, ...parts);
 }
@@ -306,18 +306,18 @@ async function answer() {
       "div.result",
       {},
       h("p.result-stars", { "aria-label": `星 ${res.stars}` }, starsText(res.stars)),
-      h("p", {}, q.mistakes === 0 ? "ノーミス！ すごい！" : `まちがい ${q.mistakes} 回 → ★${res.stars}`),
+      h("p", {}, q.mistakes === 0 ? "ノーミス！すごい！" : `間違い ${q.mistakes} 回 → ★${res.stars}`),
       res.first
-        ? h("p.result-coins", {}, h("span.coin-icon"), ` +${res.earned} コイン`, res.bonus ? `（ノーミス ボーナス +${res.bonus}）` : "")
-        : h("p.muted", {}, "さいちょうせん：コインは もらえません（さいこう記録は のこります）"),
-      h("p.muted", {}, `いまの コイン：${state.coins()}`)
+        ? h("p.result-coins", {}, h("span.coin-icon"), ` +${res.earned} コイン`, res.bonus ? `（ノーミスボーナス +${res.bonus}）` : "")
+        : h("p.muted", {}, "再挑戦：コインはもらえません（最高記録は残ります）"),
+      h("p.muted", {}, `今のコイン：${state.coins()}`)
     );
     // 解説を飛ばしたい人のために、次の問題・一覧へも直接行けるようにする
     const next = stageFor(stage.genre, stage.level + 1);
-    if (!next && stage.level < MAX_LEVEL) body.append(h("p.muted", {}, "つぎの問題は じゅんびちゅう です"));
+    if (!next && stage.level < MAX_LEVEL) body.append(h("p.muted", {}, "次の問題は準備中です"));
     const actions = [{ label: "一覧へ", value: "list" }];
     if (next) actions.push({ label: "次の問題へ ▶", value: "next" });
-    actions.push({ label: "かいせつを みる", value: "explain", primary: true });
+    actions.push({ label: "解説を見る", value: "explain", primary: true });
     const v = await modal({ title: "クリア！", body, actions });
     if (!q || q.stage !== stage) return; // 画面を離れていたら何もしない
     if (v === "list") show("area", { genre: stage.genre, focus: stage.id });
@@ -355,7 +355,7 @@ export default {
     const header = h(
       "header.topbar",
       {},
-      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }), "aria-label": "ステージ いちらんへ もどる" }, "← もどる"),
+      h("button.btn.small", { type: "button", onclick: () => show("area", { genre: stage.genre, focus: stage.id }), "aria-label": "ステージ一覧へ戻る" }, "← 戻る"),
       h("h1.topbar-title", {}, stageLabel(stage, genre)),
       h("div.topbar-right", {}, badge, q.hintBtn)
     );
@@ -363,7 +363,7 @@ export default {
     // 左：フィールド
     q.fieldHost = h("div.field-host");
     q.speed = speedBar(() => q && q.runner);
-    q.varbar = h("div.varbar", { "aria-label": "変数の いまの値" });
+    q.varbar = h("div.varbar", { "aria-label": "変数の今の値" });
     const vb = new VarBar(q.varbar);
     // 変数バーはフィールドの上に置く（画面の下端だとタスクバーに隠れることがあるため）
     q.leftPanel = h("section.left-panel", { "aria-label": "フィールド" }, h("div.field-sticky", {}, q.varbar, q.fieldHost, q.speed.el));
@@ -382,8 +382,8 @@ export default {
         q.view.resize();
       },
     });
-    q.choicesEl = h("div.choices", { role: "radiogroup", "aria-label": "こたえの せんたくし（1〜4キー）" });
-    q.answerBtn = h("button.btn.primary.big.answer-btn", { type: "button", onclick: () => answer(), title: "Enterキー" }, "こたえる");
+    q.choicesEl = h("div.choices", { role: "radiogroup", "aria-label": "答えの選択肢（1〜4キー）" });
+    q.answerBtn = h("button.btn.primary.big.answer-btn", { type: "button", onclick: () => answer(), title: "Enterキー" }, "答える");
     q.feedback = h("div.feedback", { hidden: true, role: "alert" });
     const right = h(
       "section.right-panel",
@@ -395,8 +395,8 @@ export default {
         "p.peek-tip",
         {},
         stage.blanks
-          ? "▶ 空欄より 前の 行を おすと、そこまで 実演を 進めて 値の うごきを 見られます（コインを つかいます）"
-          : "▶ 行を おすと、そこまで 実演を 進めて 値の うごきを 見られます（コインを つかいます）"
+          ? "▶ 空欄より前の行を押すと、そこまで実演を進めて値の動きを見られます（コインを使います）"
+          : "▶ 行を押すと、そこまで実演を進めて値の動きを見られます（コインを使います）"
       ),
       q.program.el,
       notesBox(stage),

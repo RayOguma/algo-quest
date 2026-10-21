@@ -80,21 +80,21 @@ export default {
     chara.setAttribute("aria-label", "アルゴくん");
     const fresh = !state.saveExists() || !state.get().tutorialSeen;
     const startBtn = fresh
-      ? h("button.btn.primary.big", { type: "button", "data-autofocus": "true", onclick: () => show("tutorial", { from: "start" }) }, "ゲームかいし")
-      : h("button.btn.primary.big", { type: "button", "data-autofocus": "true", onclick: () => show("stages") }, "つづきから");
+      ? h("button.btn.primary.big", { type: "button", "data-autofocus": "true", onclick: () => show("tutorial", { from: "start" }) }, "ゲーム開始")
+      : h("button.btn.primary.big", { type: "button", "data-autofocus": "true", onclick: () => show("stages") }, "続きから");
     el.append(
       bg,
       h(
         "div.title-wrap",
         {},
-        h("h1.logo", {}, h("span.logo-main", {}, "アルゴクエスト"), h("span.logo-sub", {}, "アルゴくんと アルゴリズムの たんけん")),
+        h("h1.logo", {}, h("span.logo-main", {}, "アルゴクエスト"), h("span.logo-sub", {}, "アルゴくんとアルゴリズムの探検")),
         h("div.title-chara-wrap", {}, chara),
         h(
           "div.title-buttons",
           {},
           startBtn,
-          h("button.btn", { type: "button", onclick: () => show("tutorial", { from: "title" }) }, "あそびかた"),
-          h("button.btn", { type: "button", onclick: () => show("settings", { back: "title" }) }, "せってい")
+          h("button.btn", { type: "button", onclick: () => show("tutorial", { from: "title" }) }, "遊び方"),
+          h("button.btn", { type: "button", onclick: () => show("settings", { back: "title" }) }, "設定")
         )
       )
     );

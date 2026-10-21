@@ -411,11 +411,11 @@ export function eventsForChoice(stage, choice) {
   if (stage.blanks && choice.events) {
     const last = choice.events[choice.events.length - 1];
     if (last && last.type === "fail") return choice.events;
-    return [...choice.events, { type: "fail", kind: "mismatch", reason: "もくてきと ちがう けっかに なった…" }];
+    return [...choice.events, { type: "fail", kind: "mismatch", reason: "目的と違う結果になった…" }];
   }
   const i = stopIndex(stage, choice);
   if (i < 0) return [];
-  return [...stage.events.slice(0, i), { type: "fail", kind: "review", reason: "ここを よく 見てみよう" }];
+  return [...stage.events.slice(0, i), { type: "fail", kind: "review", reason: "ここをよく見てみよう" }];
 }
 
 /**

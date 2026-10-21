@@ -45,8 +45,8 @@ export default {
       h(
         "header.topbar",
         {},
-        h("button.btn.small", { type: "button", onclick: () => show(back, backParams) }, "← もどる"),
-        h("h1.topbar-title", {}, "せってい"),
+        h("button.btn.small", { type: "button", onclick: () => show(back, backParams) }, "← 戻る"),
+        h("h1.topbar-title", {}, "設定"),
         h("div.topbar-right")
       ),
       h(
@@ -55,18 +55,18 @@ export default {
         h(
           "div.set-row",
           {},
-          h("label", { for: "set-speed" }, h("span.set-label", {}, "実演の 速さ"), h("small", {}, "実演中の ⏩ ボタンでも 切り替えられます")),
+          h("label", { for: "set-speed" }, h("span.set-label", {}, "実演の速さ"), h("small", {}, "実演中の ⏩ ボタンでも切り替えられます")),
           speedSel
         ),
         toggleRow("効果音", "sound"),
         h("div.set-row", {}, h("label", { for: "set-volume" }, h("span.set-label", {}, "音量")), vol),
-        h("div.set-row", {}, h("label", { for: "set-codeview" }, h("span.set-label", {}, "はじめの 表示形式")), viewSel),
-        toggleRow("アニメーションを 減らす", "reduceMotion", "移動の揺れや拡大の演出を ひかえめにします"),
+        h("div.set-row", {}, h("label", { for: "set-codeview" }, h("span.set-label", {}, "最初の表示形式")), viewSel),
+        toggleRow("アニメーションを減らす", "reduceMotion", "移動の揺れや拡大の演出を控えめにします"),
         h(
           "div.set-row",
           {},
-          h("span.set-label", {}, "あそびかた"),
-          h("button.btn", { type: "button", onclick: () => show("tutorial", { from: "settings", back }) }, "もう一度 見る")
+          h("span.set-label", {}, "遊び方"),
+          h("button.btn", { type: "button", onclick: () => show("tutorial", { from: "settings", back }) }, "もう一度見る")
         ),
         h(
           "div.set-row.danger-zone",
@@ -78,8 +78,8 @@ export default {
               type: "button",
               onclick: async () => {
                 const ok = await modal({
-                  title: "セーブデータを 削除しますか？",
-                  body: "コイン・星・クリア状況・設定が すべて 消えます。元に戻せません。",
+                  title: "セーブデータを削除しますか？",
+                  body: "コイン・星・クリア状況・設定がすべて消えます。元に戻せません。",
                   actions: [
                     { label: "やめる", value: false, primary: true },
                     { label: "削除する", value: true, danger: true },
@@ -87,7 +87,7 @@ export default {
                 });
                 if (ok) {
                   state.resetAll();
-                  toast("セーブデータを 削除しました");
+                  toast("セーブデータを削除しました");
                   show("title");
                 }
               },

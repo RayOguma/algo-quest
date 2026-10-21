@@ -78,13 +78,13 @@ function build() {
   layout.areas.forEach((ar, i) => {
     const g = GENRES[i];
     const p = genreProgress(g);
-    const status = p.ready === 0 ? "じゅんびちゅう" : `クリア ${p.cleared}/${MAX_LEVEL}`;
+    const status = p.ready === 0 ? "準備中" : `クリア ${p.cleared}/${MAX_LEVEL}`;
     const btn = h(
       "button.region",
       {
         type: "button",
         style: { left: ar.ox * scale + "px", top: ar.oy * scale + "px", width: ar.w * scale + "px", height: ar.h * scale + "px" },
-        "aria-label": `${g.num} ${g.place}（${g.name}） 星 ${p.stars} / ${MAX_STARS} ${status}`,
+        "aria-label": `${g.num} ${g.place}（${g.name}）星 ${p.stars} / ${MAX_STARS} ${status}`,
         title: `${g.name}：${g.desc}`,
       },
       h(
@@ -95,7 +95,7 @@ function build() {
           "span.rs-sub",
           {},
           h("span.rs-stars", {}, `★${p.stars}/${MAX_STARS}`),
-          p.ready === 0 ? h("span.rs-soon", { title: "じゅんびちゅう" }, h("span.rs-soon-text", {}, "じゅんびちゅう")) : h("span.rs-prog", {}, `${p.cleared}/${MAX_LEVEL}`)
+          p.ready === 0 ? h("span.rs-soon", { title: "準備中" }, h("span.rs-soon-text", {}, "準備中")) : h("span.rs-prog", {}, `${p.cleared}/${MAX_LEVEL}`)
         )
       )
     );
@@ -145,9 +145,9 @@ export default {
       h(
         "header.topbar",
         {},
-        h("button.btn.small", { type: "button", onclick: () => show("title"), "aria-label": "タイトルへ もどる" }, "← もどる"),
+        h("button.btn.small", { type: "button", onclick: () => show("title"), "aria-label": "タイトルへ戻る" }, "← 戻る"),
         h("h1.topbar-title", {}, "ワールドマップ"),
-        h("div.topbar-right", {}, s.badge, h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "stages" }), "aria-label": "せってい" }, "⚙"))
+        h("div.topbar-right", {}, s.badge, h("button.btn.small", { type: "button", onclick: () => show("settings", { back: "stages" }), "aria-label": "設定" }, "⚙"))
       )
     );
     s.wrap = h("div.map-wrap");
