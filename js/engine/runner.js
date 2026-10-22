@@ -5,6 +5,40 @@ import * as state from "../state.js";
 import { CONST_COLOR, RESULT_COLOR } from "./field.js";
 import { colorFor, ARRAY_COLOR } from "./parts.js";
 import { DIRS, parseCellRef } from "./world.js";
+import { programBlocks } from "./peek.js";
+
+/**
+ * 繰り返しの自動の速さ（仕様 §6.2⑥）。stage.autoFast のステージだけで使う。
+ * いちばん外側の繰り返しの 2 周目は 2 倍、3 周目からは 3 倍にし、繰り返しを抜けたら元に戻す。
+ * 返すのはイベントごとの倍率の配列（利用者の選んだ速さに掛ける）。
+ */
+export function loopBoostPlan(stage, events) {
+  const loops = programBlocks(stage).filter((b) => b.type === "loop");
+  const top = loops.filter((b) => !loops.some((o) => o !== b && o.start < b.start && b.end <= o.end));
+  const plan = [];
+  let cur = null;
+  let count = 0;
+  let boost = 1;
+  for (const e of events) {
+    if (e.type === "line") {
+      if (cur && (e.n < cur.start || e.n > cur.end)) {
+        cur = null;
+        boost = 1;
+      }
+      const L = top.find((b) => b.start === e.n);
+      if (L) {
+        if (cur !== L) {
+          cur = L;
+          count = 0;
+        }
+        count += 1;
+        boost = count >= 3 ? 3 : count === 2 ? 2 : 1;
+      }
+    }
+    plan.push(boost);
+  }
+  return plan;
+}
 
 // 基本の長さ（ms）。2倍速・4倍速では 1/2・1/4 になる（速さは利用者の操作だけで変わる）
 const DUR = {
@@ -47,10 +81,18 @@ export class Runner {
     this.skipping = false;
     this.aborted = false;
     this.startedAt = 0;
+    this.boost = 1;
   }
 
   get speed() {
-    return state.speed();
+    return state.speed() * (this.boost || 1);
+  }
+
+  /** 繰り返しの自動の倍率を変える（変わったときだけ hooks.onBoost で知らせる） */
+  setBoost(b) {
+    if (b === this.boost) return;
+    this.boost = b;
+    this.hooks.onBoost && this.hooks.onBoost(b);
   }
 
   get vis() {
@@ -114,8 +156,12 @@ export class Runner {
     this.startedAt = performance.now();
     this.hooks.onStart && this.hooks.onStart();
     let skippedAny = false;
-    for (const ev of events) {
+    const plan = view.stage.autoFast ? loopBoostPlan(view.stage, events) : null;
+    this.setBoost(1);
+    for (let idx = 0; idx < events.length; idx++) {
+      const ev = events[idx];
       if (this.aborted) break;
+      if (plan) this.setBoost(plan[idx]);
       if (ev.type === "success" || ev.type === "fail") {
         if (this.skipping) {
           skippedAny = true;
@@ -144,6 +190,7 @@ export class Runner {
       for (const [k, b] of Object.entries(boxes)) if (b.lock) this.vis.boxes[k].lock = b.lock;
     }
     this.playing = false;
+    this.setBoost(1);
     const r = { result: view.world.result, failInfo: view.world.failInfo, skipped: skippedAny, aborted: this.aborted };
     this.hooks.onFinish && this.hooks.onFinish(r);
     return r;

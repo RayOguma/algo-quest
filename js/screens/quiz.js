@@ -410,7 +410,7 @@ export default {
     el.append(header, q.root);
 
     q.view = new FieldView(q.fieldHost, stage, { maxHeight: fieldMaxHeight, onFrame: (v) => vb.update(v) });
-    q.runner = new Runner(q.view, { onLine: (n) => q && q.program.highlight(n) });
+    q.runner = new Runner(q.view, { onLine: (n) => q && q.program.highlight(n), onBoost: (b) => q && q.speed.boost(b) });
     renderChoices();
     renderHints();
     q.onResize = () => q && q.view.resize();

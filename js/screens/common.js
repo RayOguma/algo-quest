@@ -151,7 +151,9 @@ export function speedBar(getRunner) {
   });
   const group = h("div.view-toggle.speed-seg", { role: "group", "aria-label": "実演の速さ（Fキーで切替）", title: "Fキー" }, h("span.speed-label", { "aria-hidden": "true" }, "⏩"), ...segs);
   const skip = h("button.btn.small.speed-skip", { type: "button", title: "Sキー" }, "⏭ スキップ");
-  const el = h("div.speed-bar", { hidden: true }, group, skip);
+  // 繰り返しの自動の倍率（autoFast のステージだけ。2 周目から出す）
+  const boostTag = h("span.speed-boost", { hidden: true, role: "status" }, "繰り返しは自動で 2倍");
+  const el = h("div.speed-bar", { hidden: true }, group, skip, boostTag);
   const refresh = () => segs.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.v) === state.speed())));
   function setSpeed(v) {
     state.setSetting("speed", v);
@@ -177,6 +179,10 @@ export function speedBar(getRunner) {
     },
     toggleFast: cycle,
     skip: doSkip,
+    boost: (b) => {
+      boostTag.hidden = !(b > 1);
+      if (b > 1) boostTag.textContent = `繰り返しは自動で ${b}倍`;
+    },
   };
 }
 

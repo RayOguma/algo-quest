@@ -772,6 +772,22 @@ canvas {
   min-height: 36px;
 }
 
+.speed-boost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #fff3e0;
+  color: #e65100;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.speed-boost[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+}
+
 .speed-label {
   display: inline-flex;
   align-items: center;

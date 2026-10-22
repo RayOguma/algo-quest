@@ -149,7 +149,7 @@ export default {
     x.root = h("main.quiz-layout", {}, x.left, right);
     el.append(header, x.root);
     x.view = new FieldView(host, stage, { maxHeight: fieldMaxHeight, onFrame: (v) => vb.update(v) });
-    x.runner = new Runner(x.view, { onLine: (n) => x && x.program.highlight(n) });
+    x.runner = new Runner(x.view, { onLine: (n) => x && x.program.highlight(n), onBoost: (b) => x && x.speed.boost(b) });
     showFinal();
     renderTexts();
     x.onResize = () => x && x.view.resize();

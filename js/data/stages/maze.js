@@ -1353,4 +1353,8 @@ const maze10 = {
   },
 };
 
-export default [maze1, maze2, maze3, maze4, maze5, maze6, maze7, maze8, maze9, maze10];
+const MAZE_STAGES = [maze1, maze2, maze3, maze4, maze5, maze6, maze7, maze8, maze9, maze10];
+// ⑨ は実演が長いので、繰り返しの 2 周目からは自動で速くする（runner.js の loopBoostPlan）
+for (const s of MAZE_STAGES) s.autoFast = true;
+
+export default MAZE_STAGES;
