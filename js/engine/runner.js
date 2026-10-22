@@ -21,6 +21,9 @@ const DUR = {
   finale: 750,
 };
 
+// 迷路の盤から読んだ値（部屋の番号・隣の部屋・隣の数）のクリスタルの色
+const MAZE_COLOR = "#8BC34A";
+
 const lerp = (a, b, t) => a + (b - a) * t;
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 
@@ -156,6 +159,7 @@ export class Runner {
     if (ev.type === "spawnItem") c[ev.id] = CONST_COLOR;
     else if (ev.type === "takeCopy" && ev.id) c[ev.id] = this.targetColor(ev.box);
     else if (ev.type === "calc" && ev.id) c[ev.id] = RESULT_COLOR;
+    else if ((ev.type === "mazeRoom" || ev.type === "mazeNeighbor" || ev.type === "mazeCount") && ev.id) c[ev.id] = MAZE_COLOR;
     else if (ev.type === "push" || ev.type === "enqueue") {
       const sc = (this.view.slotColors[ev.target] ||= []);
       sc.push(this.view.colorOf(ev.id));
@@ -190,6 +194,24 @@ export class Runner {
   face(dir) {
     if (dir === "left") this.vis.char.flip = true;
     else if (dir === "right") this.vis.char.flip = false;
+  }
+
+  /** 迷路の盤の前まで歩いて、盤の方を向く（info.walk は World の approach の結果） */
+  async walkTo(info) {
+    const wk = info.walk;
+    if (!wk) return;
+    await this.walk(wk.from, wk.path, DUR.walk);
+    this.face(wk.face);
+  }
+
+  /** move(d)・canMove(d) の引数のクリスタルを、コマのいる部屋へ飛ばして渡す */
+  async giveArg(info, color) {
+    if (info.arg === undefined) return;
+    const w = this.view.world;
+    const room = info.from ?? info.room;
+    const p = w.mazeMap.tile(room);
+    this.vis.char.held = null;
+    await this.fly(info.arg, color, this.headPos(), { x: p.x, y: p.y }, DUR.fly, { scaleTo: 0.4, alphaTo: 0.2, arc: 0.5 });
   }
 
   async walk(from, path, perTile) {
@@ -454,6 +476,62 @@ export class Runner {
         view.sync();
         if (ev.type === "return") playSE("store");
         await this.wait(160);
+        break;
+      }
+      case "mazeMove": {
+        // 盤の前まで歩き、向きのクリスタルを渡して、コマを隣の部屋へ進める
+        const argColor = ev.arg ? view.colorOf(ev.arg) : null;
+        const info = w.apply(ev);
+        await this.walkTo(info);
+        await this.giveArg(info, argColor);
+        const mm = w.mazeMap;
+        const a = mm.cell(info.from);
+        const b = mm.cell(info.to);
+        const vm = vis.maze;
+        vm.dir = ev.dir;
+        playSE("step", { fast: this.speed > 1 });
+        await this.tween(DUR.move * 0.7, (t) => {
+          const e = ease(t);
+          vm.piece = { c: lerp(a.c, b.c, e), r: lerp(a.r, b.r, e) };
+        });
+        view.sync();
+        break;
+      }
+      case "mazeLook": {
+        // 調べる向きを矢印（進める）か ×（壁）で示す
+        const argColor = ev.arg ? view.colorOf(ev.arg) : null;
+        const info = w.apply(ev);
+        await this.walkTo(info);
+        await this.giveArg(info, argColor);
+        vis.maze.look = { room: info.room, dir: ev.dir, ok: info.ok };
+        playSE(info.ok ? "calc" : "bump");
+        await this.wait(DUR.compare);
+        vis.maze.look = null;
+        break;
+      }
+      case "mazeRoom":
+      case "mazeNeighbor":
+      case "mazeCount": {
+        // 盤から値を読む：その部屋が光り、クリスタルがアルゴくんの頭上へ飛ぶ
+        const argColor = ev.arg ? view.colorOf(ev.arg) : null;
+        const info = w.apply(ev);
+        await this.walkTo(info);
+        await this.giveArg(info, argColor);
+        const srcRoom = info.src ?? info.room;
+        const src = w.mazeMap.tile(srcRoom);
+        vis.maze.glow = { room: srcRoom, t0: performance.now() };
+        playSE("pickup");
+        await this.fly(info.value, view.colorOf(info.id), { x: src.x, y: src.y }, this.headPos(), DUR.fly, { scaleFrom: 0.5, arc: 0.5 });
+        view.sync();
+        break;
+      }
+      case "mazeMark": {
+        w.apply(ev);
+        view.sync();
+        const p = w.mazeMap.tile(ev.room);
+        view.particles.sparkle(p.x, p.y, 5);
+        playSE("store");
+        await this.wait(260);
         break;
       }
       case "setCell": {

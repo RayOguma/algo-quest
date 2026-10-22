@@ -454,6 +454,178 @@ export function drawQueueLane(ctx, x0, y0, T, size, name, color = "#26A69A") {
 }
 
 /**
+ * 迷路の盤。x0, y0 は左上の部屋の左上、mm は MazeMap。部屋の番号は左上、壁は太線、コマは部屋の中の丸（向きの矢印つき）。
+ * o: { piece: {c, r} | null（部屋の位置。動いている途中は小数）, dir, trail: [部屋], marks: [{ room, label }],
+ *      look: { room, dir, ok } | null, glow: { room, a } | null, goal, legend }
+ */
+export function drawMaze(ctx, x0, y0, T, mm, o = {}) {
+  const W = mm.cols * T;
+  const H = mm.rows * T;
+  const ctr = (n) => {
+    const { c, r } = mm.cell(n);
+    return { x: x0 + (c + 0.5) * T, y: y0 + (r + 0.5) * T };
+  };
+  ctx.save();
+  // 床
+  for (let n = 1; n <= mm.size; n++) {
+    const { c, r } = mm.cell(n);
+    ctx.fillStyle = (c + r) % 2 ? "#FFF3E0" : "#FFF8EC";
+    ctx.fillRect(x0 + c * T, y0 + r * T, T, T);
+  }
+  if (o.glow && o.glow.a > 0) {
+    const { c, r } = mm.cell(o.glow.room);
+    ctx.fillStyle = `rgba(255,235,59,${0.55 * o.glow.a})`;
+    ctx.fillRect(x0 + c * T, y0 + r * T, T, T);
+  }
+  // 通った道（コマの足あと）
+  if (o.trail && o.trail.length > 1) {
+    ctx.strokeStyle = "rgba(255,112,67,.45)";
+    ctx.lineWidth = Math.max(2, T * 0.07);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.setLineDash([T * 0.1, T * 0.08]);
+    ctx.beginPath();
+    o.trail.forEach((n, i) => {
+      const p = ctr(n);
+      if (i) ctx.lineTo(p.x, p.y + T * 0.12);
+      else ctx.moveTo(p.x, p.y + T * 0.12);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // 部屋の番号
+  for (let n = 1; n <= mm.size; n++) {
+    const { c, r } = mm.cell(n);
+    ctx.fillStyle = "#6D4C41";
+    ctx.font = `900 ${Math.round(T * 0.26)}px "Hiragino Sans","Noto Sans JP",sans-serif`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(String(n), x0 + c * T + T * 0.1, y0 + r * T + T * 0.07);
+  }
+  // ゴール
+  if (o.goal) {
+    const p = ctr(o.goal);
+    drawFlag(ctx, p.x + T * 0.2, p.y + T * 0.05, T * 0.6, 0);
+  }
+  // 壁（通路のない辺と外周）
+  ctx.strokeStyle = "#5D4037";
+  ctx.lineWidth = Math.max(2, T * 0.09);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  for (let n = 1; n <= mm.size; n++) {
+    const { c, r } = mm.cell(n);
+    const x = x0 + c * T;
+    const y = y0 + r * T;
+    if (!mm.canMove(n, 2)) {
+      ctx.moveTo(x + T, y);
+      ctx.lineTo(x + T, y + T);
+    }
+    if (!mm.canMove(n, 3)) {
+      ctx.moveTo(x, y + T);
+      ctx.lineTo(x + T, y + T);
+    }
+    if (r === 0) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + T, y);
+    }
+    if (c === 0) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + T);
+    }
+  }
+  ctx.stroke();
+  // 訪問の印（右上の丸）
+  for (const m of o.marks || []) {
+    const { c, r } = mm.cell(m.room);
+    const cx = x0 + c * T + T * 0.74;
+    const cy = y0 + r * T + T * 0.24;
+    ctx.fillStyle = "#FB8C00";
+    ctx.beginPath();
+    ctx.arc(cx, cy, T * 0.17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = Math.max(1, T * 0.025);
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    fitText(ctx, String(m.label), T * 0.28, Math.round(T * 0.2), 900);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(m.label), cx, cy + T * 0.01);
+  }
+  // 調べている向き（進める：緑の矢印／壁：赤い×）
+  if (o.look) {
+    const p = ctr(o.look.room);
+    const [dx, dy] = [[0, -1], [1, 0], [0, 1], [-1, 0]][o.look.dir - 1] || [0, 0];
+    const py = p.y + T * 0.12;
+    if (o.look.ok) {
+      ctx.strokeStyle = "#2E7D32";
+      ctx.fillStyle = "#2E7D32";
+      ctx.lineWidth = Math.max(2, T * 0.07);
+      const ex = p.x + dx * T * 0.62;
+      const ey = py + dy * T * 0.62;
+      ctx.beginPath();
+      ctx.moveTo(p.x + dx * T * 0.2, py + dy * T * 0.2);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ex + dx * T * 0.12, ey + dy * T * 0.12);
+      ctx.lineTo(ex - dy * T * 0.1, ey + dx * T * 0.1);
+      ctx.lineTo(ex + dy * T * 0.1, ey - dx * T * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      const ex = p.x + dx * T * 0.5;
+      const ey = py + dy * T * 0.5 - (dy ? T * 0.12 : 0);
+      ctx.strokeStyle = "#D32F2F";
+      ctx.lineWidth = Math.max(2, T * 0.07);
+      const s = T * 0.11;
+      ctx.beginPath();
+      ctx.moveTo(ex - s, ey - s);
+      ctx.lineTo(ex + s, ey + s);
+      ctx.moveTo(ex + s, ey - s);
+      ctx.lineTo(ex - s, ey + s);
+      ctx.stroke();
+    }
+  }
+  // コマ
+  if (o.piece) {
+    const cx = x0 + (o.piece.c + 0.5) * T;
+    const cy = y0 + (o.piece.r + 0.5) * T + T * 0.12;
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + T * 0.17, T * 0.17, T * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#FF7043";
+    ctx.strokeStyle = "#BF360C";
+    ctx.lineWidth = Math.max(1.5, T * 0.035);
+    ctx.beginPath();
+    ctx.arc(cx, cy, T * 0.17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    if (o.dir) {
+      const [dx, dy] = [[0, -1], [1, 0], [0, 1], [-1, 0]][o.dir - 1];
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.moveTo(cx + dx * T * 0.12, cy + dy * T * 0.12);
+      ctx.lineTo(cx - dy * T * 0.08 - dx * T * 0.05, cy + dx * T * 0.08 - dy * T * 0.05);
+      ctx.lineTo(cx + dy * T * 0.08 - dx * T * 0.05, cy - dx * T * 0.08 - dy * T * 0.05);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // 向きの番号の凡例（盤の下）
+  if (o.legend) {
+    ctx.fillStyle = "#5D4037";
+    const text = "向き　1↑　2→　3↓　4←";
+    fitText(ctx, text, W, Math.round(T * 0.22));
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(text, x0, y0 + H + T * 0.12);
+  }
+  ctx.restore();
+}
+
+/**
  * 再帰の階の札（例「f(3)」）。x0, y0 は左上、w, h は大きさ。
  * state："main"（メイン）/"active"（呼び出し中）/"done"（戻った。ret を「→ 6」と出す）/"empty"（まだ呼ばれていない）
  */

@@ -28,6 +28,63 @@ function dirBetween(a, b) {
   return null;
 }
 
+/** 迷路の向き（1 上、2 右、3 下、4 左）→ [dx, dy] */
+export const MAZE_DIRS = { 1: [0, -1], 2: [1, 0], 3: [0, 1], 4: [-1, 0] };
+
+/**
+ * 迷路の盤（field.maze）の形を調べる道具。
+ * maze: { x, y, cols, rows, links: [[1, 2], …], start, goal?, access }。部屋 n は左上から右へ、上の行から順に 1, 2, 3, …
+ */
+export class MazeMap {
+  constructor(def) {
+    this.def = def;
+    this.cols = def.cols;
+    this.rows = def.rows;
+    this.size = def.cols * def.rows;
+    this.adj = new Map();
+    for (let n = 1; n <= this.size; n++) this.adj.set(n, new Set());
+    for (const [a, b] of def.links) {
+      if (this.dirTo(a, b) === 0) throw new WorldError(`迷路の通路 ${a}-${b} は隣り合っていません`);
+      this.adj.get(a).add(b);
+      this.adj.get(b).add(a);
+    }
+  }
+  /** 部屋 n の盤の中の位置（0 始まり） */
+  cell(n) {
+    return { c: (n - 1) % this.cols, r: Math.floor((n - 1) / this.cols) };
+  }
+  /** 部屋 n のタイル座標 */
+  tile(n) {
+    const { c, r } = this.cell(n);
+    return { x: this.def.x + c, y: this.def.y + r };
+  }
+  /** 部屋 a から隣り合う部屋 b への向き（隣り合わなければ 0） */
+  dirTo(a, b) {
+    const p = this.cell(a);
+    const q = this.cell(b);
+    for (const [d, [dx, dy]] of Object.entries(MAZE_DIRS)) if (p.c + dx === q.c && p.r + dy === q.r) return Number(d);
+    return 0;
+  }
+  /** 部屋 n から向き d の隣の部屋（盤の外なら 0） */
+  roomAt(n, d) {
+    const v = MAZE_DIRS[d];
+    if (!v) return 0;
+    const { c, r } = this.cell(n);
+    const c2 = c + v[0];
+    const r2 = r + v[1];
+    if (c2 < 0 || r2 < 0 || c2 >= this.cols || r2 >= this.rows) return 0;
+    return r2 * this.cols + c2 + 1;
+  }
+  canMove(n, d) {
+    const m = this.roomAt(n, d);
+    return m > 0 && this.adj.get(n).has(m);
+  }
+  /** 部屋 n の隣の部屋（通路でつながった部屋）を番号の小さい順に */
+  neighbors(n) {
+    return [...this.adj.get(n)].sort((a, b) => a - b);
+  }
+}
+
 /** "a[2]" → { array: "a", index: 2 }（添字は1始まり） */
 export function parseCellRef(ref) {
   const m = /^([A-Za-z_]\w*)\[(\d+)\]$/.exec(String(ref));
@@ -38,6 +95,7 @@ export class World {
   constructor(stage) {
     this.stage = stage;
     this.field = stage.field;
+    this.mazeMap = stage.field.maze ? new MazeMap(stage.field.maze) : null;
     this.reset();
   }
 
@@ -63,6 +121,9 @@ export class World {
     this.depth = 0;
     this.cards = {};
     this.held = null;
+    // 迷路：コマのいる部屋・最後に進んだ向き・通った部屋の並び、訪問の印 [{ room, label }]
+    const mz = f.maze;
+    this.maze = mz ? { room: mz.start || 1, dir: 0, trail: [mz.start || 1], marks: [] } : null;
     this.visits = [];
     this.line = 0;
     this.ended = false;
@@ -92,6 +153,8 @@ export class World {
     for (const d of f.doors || []) if (d.x === x && d.y === y && !this.doors[d.id].open) return { kind: "door", obj: d };
     for (const s of f.stacks || []) if (s.x === x && y >= s.y && y < s.y + s.size) return { kind: "stack", obj: s };
     for (const q of f.queues || []) if (q.y === y && x >= q.x && x < q.x + q.size) return { kind: "queue", obj: q };
+    const mz = f.maze;
+    if (mz && x >= mz.x && x < mz.x + mz.cols && y >= mz.y && y < mz.y + mz.rows) return { kind: "maze", obj: mz };
     return null;
   }
 
@@ -388,6 +451,19 @@ export class World {
         const walk = this.approach({ x: floor.stand.x, y: floor.stand.y, access: floor.stand });
         return { ...walk, fromDepth, ret: card.ret };
       }
+      // ---- 迷路（盤の前に立って操作する） ----
+      case "mazeMove":
+      case "mazeLook":
+      case "mazeRoom":
+      case "mazeNeighbor":
+      case "mazeCount":
+        return this.applyMaze(ev);
+      case "mazeMark": {
+        const mm = this.requireMaze(ev);
+        if (!(ev.room >= 1 && ev.room <= mm.size)) throw new WorldError(`部屋 ${ev.room} はありません`, ev);
+        this.maze.marks.push({ room: ev.room, label: ev.label ?? String(this.maze.marks.length + 1) });
+        return { room: ev.room };
+      }
       case "setCell": {
         const arr = this.arrays[ev.array];
         if (!arr || ev.index < 1 || ev.index > arr.length) throw new WorldError(`setCell ${ev.array}[${ev.index}] が不正です`, ev);
@@ -428,6 +504,70 @@ export class World {
       default:
         throw new WorldError(`未対応のイベント種別 "${t}"`, ev);
     }
+  }
+
+  requireMaze(ev) {
+    if (!this.mazeMap) throw new WorldError("このフィールドには迷路がありません", ev);
+    return this.mazeMap;
+  }
+
+  /** 迷路の盤を使うイベント。結果（進めるか・部屋の番号・隣の部屋）は迷路の形から確かめる */
+  applyMaze(ev) {
+    const mm = this.requireMaze(ev);
+    const mz = this.maze;
+    const access = this.field.maze.access;
+    const walk = this.approach({ ...mm.tile(mz.room), access });
+    const hold = (value) => {
+      if (this.held) throw new WorldError(`すでに ${this.held} を持っています`, ev);
+      const id = ev.id || this.newId("maze");
+      this.items[id] = { id, value, loc: { type: "held" } };
+      this.held = id;
+      return id;
+    };
+    // move(d)・canMove(d) の引数：持っているクリスタル（arg）を盤に渡す。値は向きと一致すること
+    let arg;
+    if ((ev.type === "mazeMove" || ev.type === "mazeLook" || ev.type === "mazeNeighbor") && ev.arg) {
+      if (this.held !== ev.arg) throw new WorldError(`${ev.arg} を持っていません（持っているのは ${this.held}）`, ev);
+      arg = this.items[ev.arg].value;
+      const want = ev.type === "mazeNeighbor" ? ev.k : ev.dir;
+      if (arg !== want) throw new WorldError(`引数の値 ${arg} と ${want} が一致しません`, ev);
+      delete this.items[ev.arg];
+      this.held = null;
+    }
+    switch (ev.type) {
+      case "mazeMove": {
+        if (!(ev.dir >= 1 && ev.dir <= 4)) throw new WorldError(`向き ${ev.dir} はありません`, ev);
+        if (!mm.canMove(mz.room, ev.dir)) throw new WorldError(`部屋 ${mz.room} から向き ${ev.dir} には進めません（壁）`, ev);
+        const from = mz.room;
+        mz.room = mm.roomAt(from, ev.dir);
+        mz.dir = ev.dir;
+        mz.trail.push(mz.room);
+        return { walk, from, to: mz.room, dir: ev.dir, arg };
+      }
+      case "mazeLook": {
+        if (!(ev.dir >= 1 && ev.dir <= 4)) throw new WorldError(`向き ${ev.dir} はありません`, ev);
+        const ok = mm.canMove(mz.room, ev.dir);
+        if (!!ev.result !== ok) throw new WorldError(`部屋 ${mz.room} から向き ${ev.dir} に進める？ は ${ok} ですが result=${ev.result}`, ev);
+        return { walk, room: mz.room, dir: ev.dir, ok, arg };
+      }
+      case "mazeRoom": {
+        const id = hold(mz.room);
+        return { walk, room: mz.room, value: mz.room, id };
+      }
+      case "mazeNeighbor": {
+        const list = mm.neighbors(ev.v);
+        if (!(ev.k >= 1 && ev.k <= list.length)) throw new WorldError(`部屋 ${ev.v} の ${ev.k} 番目の隣の部屋はありません`, ev);
+        const value = list[ev.k - 1];
+        const id = hold(value);
+        return { walk, room: ev.v, src: value, value, id, arg };
+      }
+      case "mazeCount": {
+        const value = mm.neighbors(ev.v).length;
+        const id = hold(value);
+        return { walk, room: ev.v, src: ev.v, value, id };
+      }
+    }
+    throw new WorldError(`未対応のイベント種別 "${ev.type}"`, ev);
   }
 
   /** イベント列をすべて適用（検証やスキップ用） */

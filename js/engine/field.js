@@ -14,6 +14,7 @@ import {
   drawStackTube,
   drawQueueLane,
   drawCallCard,
+  drawMaze,
   colorFor,
   ARRAY_COLOR,
   shade,
@@ -88,6 +89,7 @@ export class FieldView {
       stacks: {},
       queues: {},
       cards: {},
+      maze: null,
     };
     const d = this.world.dir;
     this.vis.char.flip = d === "left";
@@ -129,6 +131,10 @@ export class FieldView {
     for (const [name, list] of Object.entries(w.queues)) v.queues[name] = slots(name, list);
     v.cards = Object.fromEntries(Object.entries(w.cards).map(([d, c]) => [d, { ...c }]));
     v.depth = w.depth;
+    if (w.maze) {
+      const { c, r } = w.mazeMap.cell(w.maze.room);
+      v.maze = { piece: { c, r }, dir: w.maze.dir, trail: [...w.maze.trail], marks: w.maze.marks.map((m) => ({ ...m })), look: null, glow: null };
+    }
     v.floor = {};
     for (const it of Object.values(w.items)) {
       if (it.loc.type === "floor") v.floor[it.id] = { value: it.value, x: it.loc.x, y: it.loc.y, color: this.colorOf(it.id) };
@@ -322,6 +328,21 @@ export class FieldView {
     for (const q of f.queues || []) {
       drawQueueLane(ctx, q.x * T, this.oy + q.y * T, T, q.size, q.name);
       drawSlots("queue", q.name, v.queues[q.name] || []);
+    }
+    // 迷路の盤
+    if (f.maze && v.maze) {
+      const mz = f.maze;
+      const vm = v.maze;
+      drawMaze(ctx, mz.x * T, this.oy + mz.y * T, T, this.world.mazeMap, {
+        piece: mz.piece === false ? null : vm.piece,
+        dir: vm.dir,
+        trail: mz.piece === false ? null : vm.trail,
+        marks: vm.marks,
+        look: vm.look,
+        glow: vm.glow ? { room: vm.glow.room, a: Math.max(0, 1 - (now - vm.glow.t0) / 900) } : null,
+        goal: mz.goal,
+        legend: mz.legend,
+      });
     }
     // 床のクリスタル
     for (const it of Object.values(v.floor)) {
